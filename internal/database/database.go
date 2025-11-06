@@ -85,10 +85,11 @@ func (r *InMemoryDepartmentRepo) FindAll() ([]*models.Department, error) {
 	r.store.deptMu.RLock()
 	defer r.store.deptMu.RUnlock()
 
-	// TODO(human): Implement the logic to convert map values to slice
-	// Consider: How should departments be ordered? By ID? By name?
-	// Should we return a copy of departments to prevent external modifications?
-	return nil, nil
+	result := make([]*models.Department, 0, len(r.store.departments))
+	for _, dept := range r.store.departments {
+		result = append(result, dept)
+	}
+	return result, nil
 }
 
 func (r *InMemoryDepartmentRepo) Update(dept *models.Department) error {

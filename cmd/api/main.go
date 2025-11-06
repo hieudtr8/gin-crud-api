@@ -19,7 +19,7 @@ func main() {
 	empRepo := database.NewEmployeeRepository(store)
 
 	// 3. Khởi tạo Handlers (Inject Repositories)
-	deptHandler := department.NewHandler(deptRepo)
+	deptHandler := department.NewHandler(deptRepo, empRepo) // Now needs empRepo for cascade delete
 	empHandler := employee.NewHandler(empRepo, deptRepo) // (cần cả 2 repo)
 
 	// 4. Khởi tạo Router (Inject Handlers)

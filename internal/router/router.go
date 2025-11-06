@@ -30,9 +30,9 @@ func Setup(
 		{
 			deptGroup.POST("", deptHandler.Create)
 			deptGroup.GET("/:id", deptHandler.Get)
-			// deptGroup.GET("", deptHandler.List)
-			// deptGroup.PUT("/:id", deptHandler.Update)
-			// deptGroup.DELETE("/:id", deptHandler.Delete)
+			deptGroup.GET("", deptHandler.List)
+			deptGroup.PUT("/:id", deptHandler.Update)
+			deptGroup.DELETE("/:id", deptHandler.Delete)
 		}
 
 		// Employee Routes
@@ -40,7 +40,9 @@ func Setup(
 		{
 			empGroup.POST("", empHandler.Create)
 			empGroup.GET("/:id", empHandler.Get)
-			// ... (các routes CRUD khác)
+			empGroup.GET("", empHandler.List)
+			empGroup.PUT("/:id", empHandler.Update)
+			empGroup.DELETE("/:id", empHandler.Delete)
 		}
 	}
     
