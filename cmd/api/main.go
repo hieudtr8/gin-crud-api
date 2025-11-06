@@ -7,7 +7,6 @@ import (
 	"gin-crud-api/internal/employee"
 	"gin-crud-api/internal/router"
 	"log"
-	"path/filepath"
 
 	"github.com/joho/godotenv"
 )
@@ -22,53 +21,25 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	log.Printf("Starting server with storage type: %s", cfg.Storage)
+	log.Printf("🚀 Starting Gin CRUD API with EntGo ORM")
+	log.Printf("📊 Database: PostgreSQL at %s:%d", cfg.Database.Host, cfg.Database.Port)
 
-	var deptRepo database.DepartmentRepository
-	var empRepo database.EmployeeRepository
-	var cleanup func()
-
-	// Initialize repositories based on storage type
-	switch cfg.Storage {
-	case "postgres":
-		// Initialize PostgreSQL
-		db, err := database.NewPostgresDB(
-			cfg.Database.DSN(),
-			cfg.Database.MaxConns,
-			cfg.Database.MinConns,
-		)
-		if err != nil {
-			log.Fatalf("Failed to connect to PostgreSQL: %v", err)
-		}
-		cleanup = db.Close
-		log.Println("Connected to PostgreSQL successfully")
-
-		// Run migrations
-		migrationsPath := filepath.Join(".", "migrations")
-		if err := database.RunMigrations(cfg.Database.DSN(), migrationsPath); err != nil {
-			log.Printf("Warning: Migration failed: %v", err)
-		} else {
-			log.Println("Database migrations completed successfully")
-		}
-
-		// Create PostgreSQL repositories
-		deptRepo = database.NewPostgresDepartmentRepository(db)
-		empRepo = database.NewPostgresEmployeeRepository(db)
-
-	case "memory":
-		fallthrough
-	default:
-		// Initialize in-memory storage
-		store := database.NewInMemoryStore()
-		deptRepo = database.NewDepartmentRepository(store)
-		empRepo = database.NewEmployeeRepository(store)
-		cleanup = func() { log.Println("Shutting down in-memory storage") }
-		log.Println("Using in-memory storage")
+	// Initialize EntGo client (automatically runs migrations)
+	entClient, err := database.NewEntClient(&cfg.Database)
+	if err != nil {
+		log.Fatalf("Failed to initialize EntGo client: %v", err)
 	}
+	defer func() {
+		if err := database.CloseEntClient(entClient); err != nil {
+			log.Printf("Error closing EntGo client: %v", err)
+		}
+	}()
 
-	defer cleanup()
+	// Create repositories using EntGo
+	deptRepo := database.NewEntDepartmentRepo(entClient)
+	empRepo := database.NewEntEmployeeRepo(entClient)
 
-	// Initialize handlers (same for both storage types)
+	// Initialize handlers
 	deptHandler := department.NewHandler(deptRepo, empRepo)
 	empHandler := employee.NewHandler(empRepo, deptRepo)
 
@@ -77,7 +48,10 @@ func main() {
 
 	// Start server
 	serverAddr := ":" + cfg.Port
-	log.Printf("Starting server on %s...", serverAddr)
+	log.Printf("🌐 Server starting on http://localhost%s", serverAddr)
+	log.Printf("📝 API endpoints available at http://localhost%s/api/v1", serverAddr)
+	log.Printf("💚 Health check at http://localhost%s/health", serverAddr)
+
 	if err := r.Run(serverAddr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

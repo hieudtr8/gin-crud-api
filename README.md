@@ -1,6 +1,6 @@
 # 🚀 Gin CRUD API - Department & Employee Management
 
-A clean architecture REST API built with Go and Gin framework, featuring both in-memory and PostgreSQL storage options.
+A clean architecture REST API built with Go, Gin framework, and EntGo ORM for type-safe database operations.
 
 ## 📋 Table of Contents
 - [Overview](#overview)
@@ -15,20 +15,26 @@ A clean architecture REST API built with Go and Gin framework, featuring both in
 
 This project is a REST API for managing departments and employees with:
 - **Full CRUD operations** for both entities
-- **Two storage options**: In-memory (for development) or PostgreSQL (for production)
+- **EntGo ORM**: Type-safe database operations with automatic migrations
 - **Clean architecture** with repository pattern
-- **Cascade delete**: Deleting a department automatically removes its employees
-- **Thread-safe** operations
+- **PostgreSQL**: Production-ready database with automatic schema management
+- **Foreign key constraints**: Database-enforced relationships
+- **Thread-safe** operations with connection pooling
 - **Docker support** for easy PostgreSQL setup
+- **Auto-generated timestamps**: created_at and updated_at handled automatically
 
 ### Entity Relationship
 ```
 Department (1) ──────→ (many) Employee
     ├── id (UUID)           ├── id (UUID)
-    └── name                ├── name
-                            ├── email
-                            └── department_id (FK)
+    ├── name                ├── name
+    ├── created_at          ├── email
+    └── updated_at          ├── department_id (FK)
+                            ├── created_at
+                            └── updated_at
 ```
+
+**Note**: Timestamps are automatically managed by EntGo
 
 ## 🏗 Architecture
 
@@ -43,17 +49,37 @@ Handler → Processes request, validates input
     ↓
 Repository Interface → Defines what operations are available
     ↓
-Repository Implementation → Actual data operations
-    ├── InMemory: Uses Go maps + mutex for thread safety
-    └── PostgreSQL: Uses database with connection pooling
+EntGo Repository → Type-safe database operations
+    ↓
+EntGo Client → Generates SQL queries automatically
+    ↓
+PostgreSQL → Stores data with ACID guarantees
 ```
 
 ### Why This Architecture?
 
-1. **Separation of Concerns**: Each layer has one job
-2. **Easy Testing**: Can swap real database with mock
-3. **Flexibility**: Switch storage without changing business logic
-4. **Maintainable**: Clear boundaries between components
+1. **Type Safety**: EntGo generates type-safe code at compile time
+2. **Automatic Migrations**: Schema changes applied automatically on startup
+3. **No Raw SQL**: Write Go code, EntGo generates optimized SQL
+4. **Separation of Concerns**: Each layer has one job
+5. **Easy Testing**: Can swap real database with mock
+6. **Maintainable**: Clear boundaries between components
+
+### What is EntGo?
+
+**EntGo** is a modern ORM (Object-Relational Mapping) framework for Go that:
+- Defines database schemas in Go code (not SQL)
+- Automatically generates type-safe database client code
+- Handles migrations without manual SQL scripts
+- Provides query builders that catch errors at compile-time
+- Manages relationships between entities automatically
+
+**Benefits**:
+- ✅ **No SQL writing needed** - Define schemas in Go
+- ✅ **Compile-time safety** - Catch bugs before runtime
+- ✅ **Auto-migrations** - Schema changes applied automatically
+- ✅ **Better IDE support** - Autocomplete for queries
+- ✅ **Less boilerplate** - Generated CRUD operations
 
 ## 🚀 Quick Start
 
@@ -69,32 +95,30 @@ cd gin-crud-api
 go mod download
 ```
 
-### 2. Choose Your Storage Mode
+### 2. Start PostgreSQL & Run Application
 
-#### Option A: In-Memory (Simple, No Setup)
-```bash
-# Using make
-make run-memory
-
-# Or directly
-STORAGE_TYPE=memory go run cmd/api/main.go
-```
-
-#### Option B: PostgreSQL (Persistent, Production-like)
 ```bash
 # 1. Start PostgreSQL with Docker
+docker-compose up -d
+# OR
 make docker-up
 
-# 2. Run migrations (create tables)
-make migrate-up
+# 2. Start the server (migrations run automatically!)
+go run cmd/api/main.go
+# OR
+make run
 
-# 3. Start server
-make run-postgres
-
-# Or without make:
-docker-compose up -d
-STORAGE_TYPE=postgres go run cmd/api/main.go
+# Server will start on http://localhost:8080
+# EntGo automatically creates/updates database tables on startup
 ```
+
+**What happens on startup?**
+- ✅ Connects to PostgreSQL database
+- ✅ Runs automatic schema migrations (creates tables if they don't exist)
+- ✅ Updates existing tables if schema changed
+- ✅ Starts HTTP server on port 8080
+
+**No manual migrations needed!** EntGo handles everything automatically.
 
 ### 3. Test the API
 ```bash
@@ -181,13 +205,23 @@ gin-crud-api/
 │   │   └── config.go          # Environment configuration
 │   │
 │   ├── database/
-│   │   ├── database.go        # Repository interfaces + in-memory impl
-│   │   ├── postgres.go        # PostgreSQL connection management
-│   │   ├── postgres_repository.go # PostgreSQL implementations
-│   │   └── migrate.go         # Database migration runner
+│   │   ├── database.go        # Repository interfaces
+│   │   ├── ent_client.go      # EntGo client initialization
+│   │   ├── ent_department_repo.go  # Department repository (EntGo)
+│   │   ├── ent_employee_repo.go    # Employee repository (EntGo)
+│   │   └── legacy/            # Old implementations (for reference)
+│   │
+│   ├── ent/                   # EntGo generated code
+│   │   ├── schema/
+│   │   │   ├── department.go  # Department schema definition
+│   │   │   └── employee.go    # Employee schema definition
+│   │   ├── department/        # Generated department code
+│   │   ├── employee/          # Generated employee code
+│   │   ├── client.go          # Generated database client
+│   │   └── ...                # Other generated files
 │   │
 │   ├── models/
-│   │   └── models.go          # Data structures (Department, Employee)
+│   │   └── models.go          # DTOs and domain models
 │   │
 │   ├── department/
 │   │   └── handler.go         # HTTP handlers for departments
@@ -198,7 +232,10 @@ gin-crud-api/
 │   └── router/
 │       └── router.go          # URL routing setup
 │
-├── migrations/                 # SQL migration files
+├── legacy/                     # Old implementations (for learning)
+│   ├── migrations/            # Manual SQL migrations (replaced by EntGo)
+│   └── README.md              # Explanation of legacy code
+│
 ├── docker-compose.yml         # PostgreSQL setup
 ├── Makefile                   # Development shortcuts
 └── .env                       # Configuration (don't commit!)
@@ -255,13 +292,45 @@ func NewHandler(repo DepartmentRepository) *Handler {
 // This makes testing easy - just pass a mock repository!
 ```
 
+### 5. EntGo Schema-First Approach
+```go
+// Define your database schema in Go (internal/ent/schema/department.go)
+func (Department) Fields() []ent.Field {
+    return []ent.Field{
+        field.UUID("id", uuid.UUID{}).Default(uuid.New),
+        field.String("name").NotEmpty(),
+        field.Time("created_at").Default(time.Now),
+    }
+}
+
+// EntGo automatically generates:
+// - SQL CREATE TABLE statements
+// - Type-safe query builders
+// - CRUD methods
+
+// Use the generated client (no SQL writing needed!)
+dept, err := client.Department.
+    Query().
+    Where(department.NameContains("Engineering")).
+    First(ctx)
+```
+
+### 6. EntGo Code Generation
+```bash
+# After modifying schema files, regenerate code:
+go generate ./internal/ent
+
+# This creates/updates all database client code automatically
+# EntGo generates ~20+ files with type-safe operations
+```
+
 ## 🛠 Development Guide
 
 ### Configuration (.env file)
 
 ```bash
-# Storage type: "memory" or "postgres"
-STORAGE_TYPE=postgres
+# Server settings
+SERVER_PORT=8080
 
 # PostgreSQL settings
 DB_HOST=localhost
@@ -269,7 +338,14 @@ DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=gin_crud_api
+DB_SSLMODE=disable
+
+# Connection pool settings
+DB_MAX_CONNS=25
+DB_MIN_CONNS=5
 ```
+
+**Note**: These settings are automatically loaded by the application. EntGo uses these to connect to PostgreSQL and manage the connection pool.
 
 ### Common Commands
 
@@ -277,10 +353,11 @@ DB_NAME=gin_crud_api
 # Development
 make help           # Show all commands
 make docker-up      # Start PostgreSQL
-make migrate-up     # Create database tables
-make run-postgres   # Run with PostgreSQL
-make run-memory     # Run with in-memory storage
+make run            # Run application (migrations automatic!)
 make docker-down    # Stop PostgreSQL
+
+# EntGo Commands
+go generate ./internal/ent    # Regenerate EntGo code after schema changes
 
 # Testing
 make test           # Run tests
@@ -288,46 +365,84 @@ make test           # Run tests
 
 # Build
 make build          # Create executable
-./gin-crud-api      # Run the executable
+./build/gin-crud-api  # Run the executable
 ```
+
+### Working with EntGo Schemas
+
+When you need to modify the database schema:
+
+1. **Edit Schema Files** (`internal/ent/schema/*.go`)
+   ```go
+   // Example: Add a field to Department
+   field.String("description").Optional()
+   ```
+
+2. **Regenerate Code**
+   ```bash
+   go generate ./internal/ent
+   ```
+
+3. **Restart Application**
+   ```bash
+   go run cmd/api/main.go
+   # EntGo automatically applies schema changes!
+   ```
+
+**That's it!** No manual SQL migrations needed.
 
 ### How Data Flows Through the Code
 
 1. **Request arrives** at router (`/api/v1/departments`)
 2. **Router** calls appropriate handler (`deptHandler.Create`)
 3. **Handler** validates input and calls repository
-4. **Repository** performs actual data operation
-5. **Response** sent back to client
+4. **Repository** uses EntGo client for type-safe operations
+5. **EntGo** generates and executes SQL queries
+6. **PostgreSQL** stores/retrieves data
+7. **Response** sent back to client
 
-### Storage Differences
+### Adding New Features with EntGo
 
-| Feature | In-Memory | PostgreSQL |
-|---------|-----------|------------|
-| **Persistence** | Lost on restart | Saved permanently |
-| **Setup** | None | Needs Docker/PostgreSQL |
-| **Performance** | Fastest | Fast with indexes |
-| **Use Case** | Development/Testing | Production |
+**Example: Adding a `phone` field to Employee**
 
-### Adding New Features
+1. **Update EntGo Schema** (`internal/ent/schema/employee.go`):
+   ```go
+   func (Employee) Fields() []ent.Field {
+       return []ent.Field{
+           // ... existing fields
+           field.String("phone").
+               Optional().
+               Comment("Employee phone number"),
+       }
+   }
+   ```
 
-To add a new field (e.g., `phone` to Employee):
+2. **Regenerate EntGo Code**:
+   ```bash
+   go generate ./internal/ent
+   ```
 
-1. **Update Model** (`internal/models/models.go`):
-```go
-type Employee struct {
-    // ... existing fields
-    Phone string `json:"phone"`
-}
-```
+3. **Update Domain Model** (`internal/models/models.go`):
+   ```go
+   type Employee struct {
+       // ... existing fields
+       Phone string `json:"phone,omitempty"`
+   }
+   ```
 
-2. **Update Database** (create migration):
-```sql
-ALTER TABLE employees ADD COLUMN phone VARCHAR(50);
-```
+4. **Update Repository** (`internal/database/ent_employee_repo.go`):
+   ```go
+   // Add phone to Save and Update methods
+   SetPhone(emp.Phone)
+   ```
 
-3. **Update Repository** implementations to handle new field
+5. **Restart Application**:
+   ```bash
+   go run cmd/api/main.go
+   # EntGo automatically adds the phone column!
+   ```
 
-4. **Update Handler** to accept phone in requests
+**No SQL writing needed!** EntGo handles all database changes automatically.
 
 ## 🧪 Testing
 
@@ -344,10 +459,13 @@ curl -X POST localhost:8080/api/v1/departments \
 ## 🚨 Important Notes
 
 1. **UUID IDs**: All IDs are UUIDs (universally unique identifiers)
-2. **Thread Safety**: In-memory storage uses mutexes for concurrent access
-3. **Cascade Delete**: Deleting a department removes all its employees
-4. **Validation**: Email must be valid format, all fields are required
-5. **Empty Lists**: APIs return `[]` not `null` when no data exists
+2. **Auto-Migrations**: EntGo automatically creates/updates database tables on startup
+3. **Foreign Key Constraints**: Database enforces relationships (cannot add employee with invalid department_id)
+4. **Timestamps**: `created_at` and `updated_at` managed automatically by EntGo
+5. **Type Safety**: Compile-time checking for all database operations
+6. **Validation**: Email must be valid format, all required fields enforced by database
+7. **Empty Lists**: APIs return `[]` not `null` when no data exists
+8. **Code Generation**: Always run `go generate ./internal/ent` after schema changes
 
 ## 🐛 Troubleshooting
 
@@ -368,14 +486,23 @@ make docker-down
 make docker-up
 ```
 
-### Migration Failed
+### EntGo Schema Generation Failed
 ```bash
-# Check database exists
-docker exec -it gin_crud_postgres psql -U postgres -c "\l"
+# Re-generate EntGo code
+go generate ./internal/ent
 
-# Reset migrations
-make migrate-down
-make migrate-up
+# If still failing, check schema files for syntax errors
+# Look in internal/ent/schema/*.go
+```
+
+### Database Schema Out of Sync
+```bash
+# EntGo migrations run on startup, so just restart the app
+go run cmd/api/main.go
+
+# To manually inspect database schema:
+docker exec -it gin_crud_postgres psql -U postgres -d gin_crud_api -c "\d departments"
+docker exec -it gin_crud_postgres psql -U postgres -d gin_crud_api -c "\d employees"
 ```
 
 ## 📝 License
