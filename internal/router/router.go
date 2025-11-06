@@ -8,21 +8,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 'Setup' "tiêm" (inject) các handlers vào
+// Setup initializes the router with handlers
 func Setup(
 	deptHandler *department.Handler,
 	empHandler *employee.Handler,
 ) *gin.Engine {
 
 	r := gin.Default()
-	
-    // Dùng 'gin.Recovery()' để "bắt" panic và
-    // trả về 500 thay vì 'crash' server
-	r.Use(gin.Recovery())
-    // 'gin.Logger()' để log request
-	r.Use(gin.Logger())
 
-	// Gom nhóm routes (Versioning)
+	// Middleware
+	r.Use(gin.Recovery()) // Recover from panics
+	r.Use(gin.Logger())    // Log requests
+
+	// API versioning
 	v1 := r.Group("/api/v1")
 	{
 		// Department Routes
@@ -46,10 +44,9 @@ func Setup(
 		}
 	}
     
-    // Health check
-    r.GET("/health", func(c *gin.Context) {
-        c.JSON(http.StatusOK, gin.H{"status": "ok"})
-    })
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	return r
 }

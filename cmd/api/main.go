@@ -9,23 +9,21 @@ import (
 )
 
 func main() {
-	// 1. Khởi tạo Database Store
-	// InMemoryStore is now just the shared storage backend
+	// Initialize shared in-memory storage
 	store := database.NewInMemoryStore()
 
-	// 2. Khởi tạo Repositories
-	// Create separate repository instances that share the same store
+	// Create repositories with shared store
 	deptRepo := database.NewDepartmentRepository(store)
 	empRepo := database.NewEmployeeRepository(store)
 
-	// 3. Khởi tạo Handlers (Inject Repositories)
-	deptHandler := department.NewHandler(deptRepo, empRepo) // Now needs empRepo for cascade delete
-	empHandler := employee.NewHandler(empRepo, deptRepo) // (cần cả 2 repo)
+	// Initialize handlers with dependency injection
+	deptHandler := department.NewHandler(deptRepo, empRepo) // Needs empRepo for cascade delete
+	empHandler := employee.NewHandler(empRepo, deptRepo)    // Needs deptRepo for validation
 
-	// 4. Khởi tạo Router (Inject Handlers)
+	// Setup router with handlers
 	r := router.Setup(deptHandler, empHandler)
 
-	// 5. Chạy Server
+	// Start server
 	log.Println("Starting server on :8080...")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

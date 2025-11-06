@@ -5,10 +5,8 @@ import (
 	"sync"
 )
 
-// Chúng ta định nghĩa 'interface' trước.
-// Điều này cho phép chúng ta dễ dàng "swap" (hoán đổi)
-// In-Memory DB này với một DB thật (ví dụ: Postgres)
-// mà không cần thay đổi code của 'handler'.
+// DepartmentRepository interface allows swapping between different storage implementations
+// (e.g., in-memory, PostgreSQL) without changing handler code
 type DepartmentRepository interface {
 	Save(dept *models.Department) error
 	FindByID(id string) (*models.Department, error)
@@ -26,9 +24,7 @@ type EmployeeRepository interface {
 	FindByDepartmentID(deptID string) ([]*models.Employee, error)
 }
 
-// --- In-Memory Store (Shared Storage) ---
-// Đây là DB giả, dùng map và bảo vệ bằng RWMutex
-// để đảm bảo an toàn khi chạy song song (concurrent-safe).
+// InMemoryStore provides thread-safe in-memory storage using RWMutex
 type InMemoryStore struct {
 	deptMu      sync.RWMutex
 	departments map[string]*models.Department
@@ -37,7 +33,6 @@ type InMemoryStore struct {
 	employees  map[string]*models.Employee
 }
 
-// NewInMemoryStore là 'constructor'
 func NewInMemoryStore() *InMemoryStore {
 	return &InMemoryStore{
 		departments: make(map[string]*models.Department),
@@ -45,7 +40,6 @@ func NewInMemoryStore() *InMemoryStore {
 	}
 }
 
-// --- Separate Repository Implementations ---
 type InMemoryDepartmentRepo struct {
 	store *InMemoryStore
 }
@@ -54,7 +48,6 @@ type InMemoryEmployeeRepo struct {
 	store *InMemoryStore
 }
 
-// Constructor functions for repositories
 func NewDepartmentRepository(store *InMemoryStore) DepartmentRepository {
 	return &InMemoryDepartmentRepo{store: store}
 }
@@ -63,7 +56,6 @@ func NewEmployeeRepository(store *InMemoryStore) EmployeeRepository {
 	return &InMemoryEmployeeRepo{store: store}
 }
 
-// --- Department Repository Methods ---
 func (r *InMemoryDepartmentRepo) Save(dept *models.Department) error {
 	r.store.deptMu.Lock()
 	defer r.store.deptMu.Unlock()

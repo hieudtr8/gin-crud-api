@@ -10,16 +10,15 @@ import (
 )
 
 type Handler struct {
-	// Employee handler cần cả 2 repo
 	empRepo  database.EmployeeRepository
-	deptRepo database.DepartmentRepository
+	deptRepo database.DepartmentRepository // Required for department validation
 }
 
 func NewHandler(empRepo database.EmployeeRepository, deptRepo database.DepartmentRepository) *Handler {
 	return &Handler{empRepo: empRepo, deptRepo: deptRepo}
 }
 
-// Create xử lý POST /employees
+// Create handles POST /employees
 func (h *Handler) Create(c *gin.Context) {
 	var req models.CreateEmployeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -27,8 +26,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	// Logic "business" (kiểm tra xem Department có tồn tại không)
-	// Đây là lý do chúng ta cần 'deptRepo'
+	// Validate department exists
 	_, err := h.deptRepo.FindByID(req.DepartmentID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid department ID"})
@@ -50,7 +48,7 @@ func (h *Handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, emp)
 }
 
-// Get xử lý GET /employees/:id
+// Get handles GET /employees/:id
 func (h *Handler) Get(c *gin.Context) {
 	id := c.Param("id")
 	emp, err := h.empRepo.FindByID(id)
@@ -61,7 +59,7 @@ func (h *Handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, emp)
 }
 
-// List xử lý GET /employees
+// List handles GET /employees
 func (h *Handler) List(c *gin.Context) {
 	employees, err := h.empRepo.FindAll()
 	if err != nil {
@@ -69,7 +67,6 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 
-	// Return empty array instead of null
 	if employees == nil {
 		employees = []*models.Employee{}
 	}
@@ -77,18 +74,16 @@ func (h *Handler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, employees)
 }
 
-// Update xử lý PUT /employees/:id
+// Update handles PUT /employees/:id
 func (h *Handler) Update(c *gin.Context) {
 	id := c.Param("id")
 
-	// Check if employee exists
 	existingEmp, err := h.empRepo.FindByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Employee not found"})
 		return
 	}
 
-	// Bind and validate request
 	var req models.UpdateEmployeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -102,7 +97,6 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	// Update employee
 	existingEmp.Name = req.Name
 	existingEmp.Email = req.Email
 	existingEmp.DepartmentID = req.DepartmentID
@@ -115,18 +109,16 @@ func (h *Handler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, existingEmp)
 }
 
-// Delete xử lý DELETE /employees/:id
+// Delete handles DELETE /employees/:id
 func (h *Handler) Delete(c *gin.Context) {
 	id := c.Param("id")
 
-	// Check if employee exists
 	_, err := h.empRepo.FindByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Employee not found"})
 		return
 	}
 
-	// Delete employee
 	if err := h.empRepo.Delete(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete employee"})
 		return
