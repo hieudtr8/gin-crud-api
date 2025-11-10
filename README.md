@@ -1,4 +1,4 @@
-# 🚀 Gin CRUD API - GraphQL Edition
+# 🚀 Gin CRUD API - GraphQL
 
 A clean architecture **GraphQL API** built with Go, gqlgen, and EntGo ORM for type-safe database operations with schema-first development.
 
@@ -47,8 +47,6 @@ Department (1) ──────→ (many) Employee
                             ├── created_at
                             └── updated_at
 ```
-
-**Note**: Timestamps are automatically managed by EntGo
 
 ## ⚡ Quick Command Reference
 
