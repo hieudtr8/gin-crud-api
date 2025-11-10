@@ -81,10 +81,20 @@ make test-graph       # Run GraphQL resolver tests only
 
 ### Docker & Database
 ```bash
+# Full stack deployment
+make docker-run       # Start all services (PostgreSQL + GraphQL API)
+make docker-build     # Build Docker image
+make docker-rebuild   # Rebuild and restart everything
+
 # PostgreSQL management
-make docker-up        # Start PostgreSQL with Docker Compose
-make docker-down      # Stop PostgreSQL
+make docker-up        # Start PostgreSQL only
+make docker-down      # Stop all containers
+
+# Monitoring
+make docker-logs-api  # Show API logs
 make docker-logs      # Show PostgreSQL logs
+make docker-logs-all  # Show all logs
+make docker-ps        # Show running containers
 ```
 
 ### Utilities
@@ -411,9 +421,46 @@ Every GraphQL operation gets a unique request ID:
 - Enables tracing in high-concurrency scenarios
 - Check logs with: `request_id` field
 
+## Docker Deployment
+
+The project is fully dockerized for easy deployment:
+
+### Quick Deploy
+```bash
+# Start everything (PostgreSQL + GraphQL API)
+make docker-run
+
+# Or directly
+docker-compose up -d
+```
+
+Access at: http://localhost:8081
+
+### Docker Architecture
+- **Multi-stage Dockerfile**: Optimized build (~15MB final image)
+- **Docker Compose**: Orchestrates PostgreSQL + GraphQL API
+- **Health Checks**: Built-in for both services
+- **Auto-restart**: Services recover automatically
+- **Networking**: Services communicate via app-network
+- **Volumes**: PostgreSQL data persisted
+
+### Environment Variables
+- `GRAPHQL_PORT`: Server port (default: 8081)
+- `DB_HOST`: Database host (use `postgres` for Docker, `localhost` for local)
+- `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`: Database config
+- `LOG_LEVEL`: Logging level (debug, info, warn, error)
+- `LOG_PRETTY`: Pretty logs (true for dev, false for production)
+
+### Docker Files
+- `Dockerfile`: Multi-stage build configuration
+- `docker-compose.yml`: Service orchestration
+- `.dockerignore`: Excludes unnecessary files from build
+- `.env.example`: Template for environment variables
+
 ## Notes
 
 - **GraphQL models are used everywhere** - no separate domain models
+- **Docker deployment available** - One command to run entire stack
 - Vietnamese comments in code explain architecture decisions
 - GraphQL server port configured via `GRAPHQL_PORT` environment variable (default: 8081)
 - Legacy REST server port configured via `SERVER_PORT` environment variable (default: 8080)

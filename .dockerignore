@@ -1,0 +1,47 @@
+# Git
+.git/
+.gitignore
+
+# Environment files (use docker-compose environment instead)
+.env
+.env.*
+
+# Documentation
+*.md
+docs/
+
+# Build artifacts
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+gin-crud-api
+graphql-server
+rest-server
+
+# Test artifacts
+*.test
+*.out
+coverage.out
+coverage.html
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore

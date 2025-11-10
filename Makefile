@@ -1,6 +1,7 @@
 .PHONY: help api dev build build-legacy test test-coverage test-db test-graph \
-        docker-up docker-down generate generate-graphql generate-ent \
-        clean format vet tidy
+        docker-up docker-down docker-build docker-run docker-restart docker-logs \
+        docker-logs-api docker-logs-all docker-ps docker-rebuild \
+        generate generate-graphql generate-ent clean format vet tidy
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -81,20 +82,48 @@ generate-graphql: ## Regenerate GraphQL code (gqlgen)
 
 ##@ Docker & Database
 
-docker-up: ## Start PostgreSQL with Docker Compose
+docker-up: ## Start PostgreSQL with Docker Compose (database only)
 	@echo "$(BLUE)Starting PostgreSQL...$(NC)"
-	docker-compose up -d
+	docker-compose up -d postgres
 	@echo "$(YELLOW)Waiting for PostgreSQL to be ready...$(NC)"
 	@sleep 3
 	@echo "$(GREEN)✓ PostgreSQL is ready$(NC)"
 
-docker-down: ## Stop PostgreSQL Docker containers
-	@echo "$(BLUE)Stopping PostgreSQL...$(NC)"
+docker-down: ## Stop all Docker containers
+	@echo "$(BLUE)Stopping containers...$(NC)"
 	docker-compose down
-	@echo "$(GREEN)✓ PostgreSQL stopped$(NC)"
+	@echo "$(GREEN)✓ Containers stopped$(NC)"
 
 docker-logs: ## Show PostgreSQL logs
 	docker-compose logs -f postgres
+
+docker-build: ## Build Docker image for GraphQL API
+	@echo "$(BLUE)Building Docker image...$(NC)"
+	docker-compose build graphql-api
+	@echo "$(GREEN)✓ Docker image built$(NC)"
+
+docker-run: ## Start all services (PostgreSQL + GraphQL API)
+	@echo "$(BLUE)Starting all services...$(NC)"
+	docker-compose up -d
+	@echo "$(GREEN)✓ All services started$(NC)"
+	@echo "$(YELLOW)GraphQL Playground: http://localhost:8081$(NC)"
+	@echo "$(YELLOW)GraphQL API: http://localhost:8081/query$(NC)"
+
+docker-restart: ## Restart all services
+	@echo "$(BLUE)Restarting services...$(NC)"
+	docker-compose restart
+	@echo "$(GREEN)✓ Services restarted$(NC)"
+
+docker-logs-api: ## Show GraphQL API logs
+	docker-compose logs -f graphql-api
+
+docker-logs-all: ## Show all container logs
+	docker-compose logs -f
+
+docker-ps: ## Show running containers
+	docker-compose ps
+
+docker-rebuild: docker-down docker-build docker-run ## Rebuild and restart everything
 
 ##@ Code Quality
 

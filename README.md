@@ -63,7 +63,11 @@ make help        # Show all available commands
 
 For detailed commands, see the [Development Guide](#-development-guide) section.
 
+**🐳 Want Docker?** Skip to [Docker Deployment](#-docker-deployment) for one-command setup!
+
 ## 🚀 Quick Start
+
+> **Note**: This section is for local development. For Docker deployment, see [Docker Deployment](#-docker-deployment)
 
 ### Prerequisites
 - Go 1.24.3+ installed
@@ -161,6 +165,75 @@ You should see:
   }
 }
 ```
+
+## 🐳 Docker Deployment
+
+### Quick Deploy with Docker Compose
+
+The easiest way to run the entire stack (PostgreSQL + GraphQL API) is with Docker Compose:
+
+```bash
+# Start everything
+docker-compose up -d
+
+# Or use Make
+make docker-run
+```
+
+That's it! The application will be available at:
+- **GraphQL Playground**: http://localhost:8081
+- **GraphQL API**: http://localhost:8081/query
+
+### Docker Commands
+
+```bash
+# Build and deploy
+make docker-run          # Start all services (PostgreSQL + API)
+make docker-build        # Build Docker image only
+make docker-rebuild      # Rebuild and restart everything
+
+# Monitoring
+make docker-logs-api     # Show API logs
+make docker-logs         # Show PostgreSQL logs
+make docker-logs-all     # Show all container logs
+make docker-ps           # Show running containers
+
+# Control
+make docker-restart      # Restart services
+make docker-down         # Stop all containers
+```
+
+### Configuration for Docker
+
+When using Docker Compose, create a `.env` file (or use `.env.example`):
+
+```bash
+cp .env.example .env
+```
+
+**Important**: When deploying with Docker, `DB_HOST` should be `postgres` (the service name), not `localhost`.
+
+The `docker-compose.yml` automatically uses the correct host for you!
+
+### What Happens During Docker Deployment
+
+1. **PostgreSQL Container** starts first with health checks
+2. **GraphQL API waits** for PostgreSQL to be healthy
+3. **EntGo Auto-Migration** runs on API startup
+4. **Both services** are connected via Docker network
+5. **Health checks** monitor service status
+6. **Restart policy** ensures services recover from failures
+
+### Production Considerations
+
+The Dockerfile uses **multi-stage build** for optimization:
+- ✅ **Stage 1**: Compiles Go application (golang:1.24-alpine)
+- ✅ **Stage 2**: Runtime with minimal image (alpine:latest ~5MB)
+- ✅ **Security**: Non-root user (appuser)
+- ✅ **Health checks**: Built-in liveness probes
+- ✅ **Static binary**: No runtime dependencies
+
+**Image size**: ~15MB (vs ~800MB with full Go image!)
 
 ## 🎮 GraphQL Examples
 
@@ -418,9 +491,14 @@ make generate-ent     # Regenerate EntGo database code only
 make generate-graphql # Regenerate GraphQL code only
 
 # Docker & Database
-make docker-up        # Start PostgreSQL
-make docker-down      # Stop PostgreSQL
+make docker-run       # Start all services (PostgreSQL + API)
+make docker-up        # Start PostgreSQL only
+make docker-down      # Stop all containers
+make docker-build     # Build Docker image
+make docker-rebuild   # Rebuild and restart everything
+make docker-logs-api  # Show API logs
 make docker-logs      # Show PostgreSQL logs
+make docker-ps        # Show running containers
 
 # Testing
 make test             # Run all tests
