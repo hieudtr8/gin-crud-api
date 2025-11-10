@@ -8,6 +8,7 @@
 """
 Employee represents a person working in a department.
 Each employee must belong to exactly one department.
+Employees can work on multiple projects.
 """
 type Employee {
   """Unique identifier (UUID)"""
@@ -24,6 +25,9 @@ type Employee {
 
   """The department this employee belongs to"""
   department: Department
+
+  """List of projects this employee is working on"""
+  projects: [Project!]
 }
 
 # ============================================================================

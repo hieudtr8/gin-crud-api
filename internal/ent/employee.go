@@ -40,9 +40,11 @@ type Employee struct {
 type EmployeeEdges struct {
 	// The department this employee belongs to
 	Department *Department `json:"department,omitempty"`
+	// Projects that this employee is working on
+	Projects []*Project `json:"projects,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // DepartmentOrErr returns the Department value or an error if the edge
@@ -54,6 +56,15 @@ func (e EmployeeEdges) DepartmentOrErr() (*Department, error) {
 		return nil, &NotFoundError{label: department.Label}
 	}
 	return nil, &NotLoadedError{edge: "department"}
+}
+
+// ProjectsOrErr returns the Projects value or an error if the edge
+// was not loaded in eager-loading.
+func (e EmployeeEdges) ProjectsOrErr() ([]*Project, error) {
+	if e.loadedTypes[1] {
+		return e.Projects, nil
+	}
+	return nil, &NotLoadedError{edge: "projects"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -134,6 +145,11 @@ func (_m *Employee) Value(name string) (ent.Value, error) {
 // QueryDepartment queries the "department" edge of the Employee entity.
 func (_m *Employee) QueryDepartment() *DepartmentQuery {
 	return NewEmployeeClient(_m.config).QueryDepartment(_m)
+}
+
+// QueryProjects queries the "projects" edge of the Employee entity.
+func (_m *Employee) QueryProjects() *ProjectQuery {
+	return NewEmployeeClient(_m.config).QueryProjects(_m)
 }
 
 // Update returns a builder for updating this Employee.

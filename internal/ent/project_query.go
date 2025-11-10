@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
-	"gin-crud-api/internal/ent/department"
 	"gin-crud-api/internal/ent/employee"
 	"gin-crud-api/internal/ent/predicate"
 	"gin-crud-api/internal/ent/project"
@@ -19,54 +18,53 @@ import (
 	"github.com/google/uuid"
 )
 
-// EmployeeQuery is the builder for querying Employee entities.
-type EmployeeQuery struct {
+// ProjectQuery is the builder for querying Project entities.
+type ProjectQuery struct {
 	config
-	ctx            *QueryContext
-	order          []employee.OrderOption
-	inters         []Interceptor
-	predicates     []predicate.Employee
-	withDepartment *DepartmentQuery
-	withProjects   *ProjectQuery
+	ctx             *QueryContext
+	order           []project.OrderOption
+	inters          []Interceptor
+	predicates      []predicate.Project
+	withTeamMembers *EmployeeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the EmployeeQuery builder.
-func (_q *EmployeeQuery) Where(ps ...predicate.Employee) *EmployeeQuery {
+// Where adds a new predicate for the ProjectQuery builder.
+func (_q *ProjectQuery) Where(ps ...predicate.Project) *ProjectQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *EmployeeQuery) Limit(limit int) *EmployeeQuery {
+func (_q *ProjectQuery) Limit(limit int) *ProjectQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *EmployeeQuery) Offset(offset int) *EmployeeQuery {
+func (_q *ProjectQuery) Offset(offset int) *ProjectQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *EmployeeQuery) Unique(unique bool) *EmployeeQuery {
+func (_q *ProjectQuery) Unique(unique bool) *ProjectQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *EmployeeQuery) Order(o ...employee.OrderOption) *EmployeeQuery {
+func (_q *ProjectQuery) Order(o ...project.OrderOption) *ProjectQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// QueryDepartment chains the current query on the "department" edge.
-func (_q *EmployeeQuery) QueryDepartment() *DepartmentQuery {
-	query := (&DepartmentClient{config: _q.config}).Query()
+// QueryTeamMembers chains the current query on the "team_members" edge.
+func (_q *ProjectQuery) QueryTeamMembers() *EmployeeQuery {
+	query := (&EmployeeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -76,9 +74,9 @@ func (_q *EmployeeQuery) QueryDepartment() *DepartmentQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(employee.Table, employee.FieldID, selector),
-			sqlgraph.To(department.Table, department.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, employee.DepartmentTable, employee.DepartmentColumn),
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(employee.Table, employee.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, project.TeamMembersTable, project.TeamMembersPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -86,43 +84,21 @@ func (_q *EmployeeQuery) QueryDepartment() *DepartmentQuery {
 	return query
 }
 
-// QueryProjects chains the current query on the "projects" edge.
-func (_q *EmployeeQuery) QueryProjects() *ProjectQuery {
-	query := (&ProjectClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(employee.Table, employee.FieldID, selector),
-			sqlgraph.To(project.Table, project.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, employee.ProjectsTable, employee.ProjectsPrimaryKey...),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// First returns the first Employee entity from the query.
-// Returns a *NotFoundError when no Employee was found.
-func (_q *EmployeeQuery) First(ctx context.Context) (*Employee, error) {
+// First returns the first Project entity from the query.
+// Returns a *NotFoundError when no Project was found.
+func (_q *ProjectQuery) First(ctx context.Context) (*Project, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{employee.Label}
+		return nil, &NotFoundError{project.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *EmployeeQuery) FirstX(ctx context.Context) *Employee {
+func (_q *ProjectQuery) FirstX(ctx context.Context) *Project {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -130,22 +106,22 @@ func (_q *EmployeeQuery) FirstX(ctx context.Context) *Employee {
 	return node
 }
 
-// FirstID returns the first Employee ID from the query.
-// Returns a *NotFoundError when no Employee ID was found.
-func (_q *EmployeeQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstID returns the first Project ID from the query.
+// Returns a *NotFoundError when no Project ID was found.
+func (_q *ProjectQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{employee.Label}
+		err = &NotFoundError{project.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *EmployeeQuery) FirstIDX(ctx context.Context) uuid.UUID {
+func (_q *ProjectQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -153,10 +129,10 @@ func (_q *EmployeeQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// Only returns a single Employee entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one Employee entity is found.
-// Returns a *NotFoundError when no Employee entities are found.
-func (_q *EmployeeQuery) Only(ctx context.Context) (*Employee, error) {
+// Only returns a single Project entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one Project entity is found.
+// Returns a *NotFoundError when no Project entities are found.
+func (_q *ProjectQuery) Only(ctx context.Context) (*Project, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -165,14 +141,14 @@ func (_q *EmployeeQuery) Only(ctx context.Context) (*Employee, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{employee.Label}
+		return nil, &NotFoundError{project.Label}
 	default:
-		return nil, &NotSingularError{employee.Label}
+		return nil, &NotSingularError{project.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *EmployeeQuery) OnlyX(ctx context.Context) *Employee {
+func (_q *ProjectQuery) OnlyX(ctx context.Context) *Project {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -180,10 +156,10 @@ func (_q *EmployeeQuery) OnlyX(ctx context.Context) *Employee {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Employee ID in the query.
-// Returns a *NotSingularError when more than one Employee ID is found.
+// OnlyID is like Only, but returns the only Project ID in the query.
+// Returns a *NotSingularError when more than one Project ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *EmployeeQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *ProjectQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -192,15 +168,15 @@ func (_q *EmployeeQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{employee.Label}
+		err = &NotFoundError{project.Label}
 	default:
-		err = &NotSingularError{employee.Label}
+		err = &NotSingularError{project.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *EmployeeQuery) OnlyIDX(ctx context.Context) uuid.UUID {
+func (_q *ProjectQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -208,18 +184,18 @@ func (_q *EmployeeQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of Employees.
-func (_q *EmployeeQuery) All(ctx context.Context) ([]*Employee, error) {
+// All executes the query and returns a list of Projects.
+func (_q *ProjectQuery) All(ctx context.Context) ([]*Project, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*Employee, *EmployeeQuery]()
-	return withInterceptors[[]*Employee](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*Project, *ProjectQuery]()
+	return withInterceptors[[]*Project](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *EmployeeQuery) AllX(ctx context.Context) []*Employee {
+func (_q *ProjectQuery) AllX(ctx context.Context) []*Project {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -227,20 +203,20 @@ func (_q *EmployeeQuery) AllX(ctx context.Context) []*Employee {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Employee IDs.
-func (_q *EmployeeQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// IDs executes the query and returns a list of Project IDs.
+func (_q *ProjectQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(employee.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(project.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *EmployeeQuery) IDsX(ctx context.Context) []uuid.UUID {
+func (_q *ProjectQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -249,16 +225,16 @@ func (_q *EmployeeQuery) IDsX(ctx context.Context) []uuid.UUID {
 }
 
 // Count returns the count of the given query.
-func (_q *EmployeeQuery) Count(ctx context.Context) (int, error) {
+func (_q *ProjectQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*EmployeeQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*ProjectQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *EmployeeQuery) CountX(ctx context.Context) int {
+func (_q *ProjectQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -267,7 +243,7 @@ func (_q *EmployeeQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *EmployeeQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *ProjectQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -280,7 +256,7 @@ func (_q *EmployeeQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *EmployeeQuery) ExistX(ctx context.Context) bool {
+func (_q *ProjectQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -288,45 +264,33 @@ func (_q *EmployeeQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the EmployeeQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the ProjectQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *EmployeeQuery) Clone() *EmployeeQuery {
+func (_q *ProjectQuery) Clone() *ProjectQuery {
 	if _q == nil {
 		return nil
 	}
-	return &EmployeeQuery{
-		config:         _q.config,
-		ctx:            _q.ctx.Clone(),
-		order:          append([]employee.OrderOption{}, _q.order...),
-		inters:         append([]Interceptor{}, _q.inters...),
-		predicates:     append([]predicate.Employee{}, _q.predicates...),
-		withDepartment: _q.withDepartment.Clone(),
-		withProjects:   _q.withProjects.Clone(),
+	return &ProjectQuery{
+		config:          _q.config,
+		ctx:             _q.ctx.Clone(),
+		order:           append([]project.OrderOption{}, _q.order...),
+		inters:          append([]Interceptor{}, _q.inters...),
+		predicates:      append([]predicate.Project{}, _q.predicates...),
+		withTeamMembers: _q.withTeamMembers.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithDepartment tells the query-builder to eager-load the nodes that are connected to
-// the "department" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *EmployeeQuery) WithDepartment(opts ...func(*DepartmentQuery)) *EmployeeQuery {
-	query := (&DepartmentClient{config: _q.config}).Query()
+// WithTeamMembers tells the query-builder to eager-load the nodes that are connected to
+// the "team_members" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithTeamMembers(opts ...func(*EmployeeQuery)) *ProjectQuery {
+	query := (&EmployeeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withDepartment = query
-	return _q
-}
-
-// WithProjects tells the query-builder to eager-load the nodes that are connected to
-// the "projects" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *EmployeeQuery) WithProjects(opts ...func(*ProjectQuery)) *EmployeeQuery {
-	query := (&ProjectClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withProjects = query
+	_q.withTeamMembers = query
 	return _q
 }
 
@@ -340,15 +304,15 @@ func (_q *EmployeeQuery) WithProjects(opts ...func(*ProjectQuery)) *EmployeeQuer
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.Employee.Query().
-//		GroupBy(employee.FieldName).
+//	client.Project.Query().
+//		GroupBy(project.FieldName).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *EmployeeQuery) GroupBy(field string, fields ...string) *EmployeeGroupBy {
+func (_q *ProjectQuery) GroupBy(field string, fields ...string) *ProjectGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &EmployeeGroupBy{build: _q}
+	grbuild := &ProjectGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = employee.Label
+	grbuild.label = project.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -362,23 +326,23 @@ func (_q *EmployeeQuery) GroupBy(field string, fields ...string) *EmployeeGroupB
 //		Name string `json:"name,omitempty"`
 //	}
 //
-//	client.Employee.Query().
-//		Select(employee.FieldName).
+//	client.Project.Query().
+//		Select(project.FieldName).
 //		Scan(ctx, &v)
-func (_q *EmployeeQuery) Select(fields ...string) *EmployeeSelect {
+func (_q *ProjectQuery) Select(fields ...string) *ProjectSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &EmployeeSelect{EmployeeQuery: _q}
-	sbuild.label = employee.Label
+	sbuild := &ProjectSelect{ProjectQuery: _q}
+	sbuild.label = project.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a EmployeeSelect configured with the given aggregations.
-func (_q *EmployeeQuery) Aggregate(fns ...AggregateFunc) *EmployeeSelect {
+// Aggregate returns a ProjectSelect configured with the given aggregations.
+func (_q *ProjectQuery) Aggregate(fns ...AggregateFunc) *ProjectSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *EmployeeQuery) prepareQuery(ctx context.Context) error {
+func (_q *ProjectQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -390,7 +354,7 @@ func (_q *EmployeeQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !employee.ValidColumn(f) {
+		if !project.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -404,20 +368,19 @@ func (_q *EmployeeQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *EmployeeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Employee, error) {
+func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Project, error) {
 	var (
-		nodes       = []*Employee{}
+		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
-			_q.withDepartment != nil,
-			_q.withProjects != nil,
+		loadedTypes = [1]bool{
+			_q.withTeamMembers != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*Employee).scanValues(nil, columns)
+		return (*Project).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &Employee{config: _q.config}
+		node := &Project{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -431,55 +394,20 @@ func (_q *EmployeeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Emp
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withDepartment; query != nil {
-		if err := _q.loadDepartment(ctx, query, nodes, nil,
-			func(n *Employee, e *Department) { n.Edges.Department = e }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withProjects; query != nil {
-		if err := _q.loadProjects(ctx, query, nodes,
-			func(n *Employee) { n.Edges.Projects = []*Project{} },
-			func(n *Employee, e *Project) { n.Edges.Projects = append(n.Edges.Projects, e) }); err != nil {
+	if query := _q.withTeamMembers; query != nil {
+		if err := _q.loadTeamMembers(ctx, query, nodes,
+			func(n *Project) { n.Edges.TeamMembers = []*Employee{} },
+			func(n *Project, e *Employee) { n.Edges.TeamMembers = append(n.Edges.TeamMembers, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *EmployeeQuery) loadDepartment(ctx context.Context, query *DepartmentQuery, nodes []*Employee, init func(*Employee), assign func(*Employee, *Department)) error {
-	ids := make([]uuid.UUID, 0, len(nodes))
-	nodeids := make(map[uuid.UUID][]*Employee)
-	for i := range nodes {
-		fk := nodes[i].DepartmentID
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(department.IDIn(ids...))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
-		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "department_id" returned %v`, n.ID)
-		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
-	}
-	return nil
-}
-func (_q *EmployeeQuery) loadProjects(ctx context.Context, query *ProjectQuery, nodes []*Employee, init func(*Employee), assign func(*Employee, *Project)) error {
+func (_q *ProjectQuery) loadTeamMembers(ctx context.Context, query *EmployeeQuery, nodes []*Project, init func(*Project), assign func(*Project, *Employee)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[uuid.UUID]*Employee)
-	nids := make(map[uuid.UUID]map[*Employee]struct{})
+	byID := make(map[uuid.UUID]*Project)
+	nids := make(map[uuid.UUID]map[*Project]struct{})
 	for i, node := range nodes {
 		edgeIDs[i] = node.ID
 		byID[node.ID] = node
@@ -488,11 +416,11 @@ func (_q *EmployeeQuery) loadProjects(ctx context.Context, query *ProjectQuery, 
 		}
 	}
 	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(employee.ProjectsTable)
-		s.Join(joinT).On(s.C(project.FieldID), joinT.C(employee.ProjectsPrimaryKey[0]))
-		s.Where(sql.InValues(joinT.C(employee.ProjectsPrimaryKey[1]), edgeIDs...))
+		joinT := sql.Table(project.TeamMembersTable)
+		s.Join(joinT).On(s.C(employee.FieldID), joinT.C(project.TeamMembersPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(project.TeamMembersPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
-		s.Select(joinT.C(employee.ProjectsPrimaryKey[1]))
+		s.Select(joinT.C(project.TeamMembersPrimaryKey[0]))
 		s.AppendSelect(columns...)
 		s.SetDistinct(false)
 	})
@@ -514,7 +442,7 @@ func (_q *EmployeeQuery) loadProjects(ctx context.Context, query *ProjectQuery, 
 				outValue := *values[0].(*uuid.UUID)
 				inValue := *values[1].(*uuid.UUID)
 				if nids[inValue] == nil {
-					nids[inValue] = map[*Employee]struct{}{byID[outValue]: {}}
+					nids[inValue] = map[*Project]struct{}{byID[outValue]: {}}
 					return assign(columns[1:], values[1:])
 				}
 				nids[inValue][byID[outValue]] = struct{}{}
@@ -522,14 +450,14 @@ func (_q *EmployeeQuery) loadProjects(ctx context.Context, query *ProjectQuery, 
 			}
 		})
 	})
-	neighbors, err := withInterceptors[[]*Project](ctx, query, qr, query.inters)
+	neighbors, err := withInterceptors[[]*Employee](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
 		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected "projects" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected "team_members" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)
@@ -538,7 +466,7 @@ func (_q *EmployeeQuery) loadProjects(ctx context.Context, query *ProjectQuery, 
 	return nil
 }
 
-func (_q *EmployeeQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *ProjectQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -547,8 +475,8 @@ func (_q *EmployeeQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *EmployeeQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(employee.Table, employee.Columns, sqlgraph.NewFieldSpec(employee.FieldID, field.TypeUUID))
+func (_q *ProjectQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(project.Table, project.Columns, sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -557,14 +485,11 @@ func (_q *EmployeeQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, employee.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, project.FieldID)
 		for i := range fields {
-			if fields[i] != employee.FieldID {
+			if fields[i] != project.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
-		}
-		if _q.withDepartment != nil {
-			_spec.Node.AddColumnOnce(employee.FieldDepartmentID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
@@ -590,12 +515,12 @@ func (_q *EmployeeQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *EmployeeQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *ProjectQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(employee.Table)
+	t1 := builder.Table(project.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = employee.Columns
+		columns = project.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -622,28 +547,28 @@ func (_q *EmployeeQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// EmployeeGroupBy is the group-by builder for Employee entities.
-type EmployeeGroupBy struct {
+// ProjectGroupBy is the group-by builder for Project entities.
+type ProjectGroupBy struct {
 	selector
-	build *EmployeeQuery
+	build *ProjectQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *EmployeeGroupBy) Aggregate(fns ...AggregateFunc) *EmployeeGroupBy {
+func (_g *ProjectGroupBy) Aggregate(fns ...AggregateFunc) *ProjectGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *EmployeeGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *ProjectGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*EmployeeQuery, *EmployeeGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*ProjectQuery, *ProjectGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *EmployeeGroupBy) sqlScan(ctx context.Context, root *EmployeeQuery, v any) error {
+func (_g *ProjectGroupBy) sqlScan(ctx context.Context, root *ProjectQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -670,28 +595,28 @@ func (_g *EmployeeGroupBy) sqlScan(ctx context.Context, root *EmployeeQuery, v a
 	return sql.ScanSlice(rows, v)
 }
 
-// EmployeeSelect is the builder for selecting fields of Employee entities.
-type EmployeeSelect struct {
-	*EmployeeQuery
+// ProjectSelect is the builder for selecting fields of Project entities.
+type ProjectSelect struct {
+	*ProjectQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *EmployeeSelect) Aggregate(fns ...AggregateFunc) *EmployeeSelect {
+func (_s *ProjectSelect) Aggregate(fns ...AggregateFunc) *ProjectSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *EmployeeSelect) Scan(ctx context.Context, v any) error {
+func (_s *ProjectSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*EmployeeQuery, *EmployeeSelect](ctx, _s.EmployeeQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*ProjectQuery, *ProjectSelect](ctx, _s.ProjectQuery, _s, _s.inters, v)
 }
 
-func (_s *EmployeeSelect) sqlScan(ctx context.Context, root *EmployeeQuery, v any) error {
+func (_s *ProjectSelect) sqlScan(ctx context.Context, root *ProjectQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {

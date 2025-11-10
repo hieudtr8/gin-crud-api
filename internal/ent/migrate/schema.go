@@ -56,13 +56,78 @@ var (
 			},
 		},
 	}
+	// ProjectsColumns holds the columns for the "projects" table.
+	ProjectsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"ACTIVE", "COMPLETED", "ON_HOLD"}, Default: "ACTIVE"},
+		{Name: "priority", Type: field.TypeEnum, Enums: []string{"HIGH", "MEDIUM", "LOW"}, Default: "MEDIUM"},
+		{Name: "start_date", Type: field.TypeTime},
+		{Name: "end_date", Type: field.TypeTime},
+		{Name: "budget", Type: field.TypeFloat64},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// ProjectsTable holds the schema information for the "projects" table.
+	ProjectsTable = &schema.Table{
+		Name:       "projects",
+		Columns:    ProjectsColumns,
+		PrimaryKey: []*schema.Column{ProjectsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "project_status",
+				Unique:  false,
+				Columns: []*schema.Column{ProjectsColumns[3]},
+			},
+			{
+				Name:    "project_priority",
+				Unique:  false,
+				Columns: []*schema.Column{ProjectsColumns[4]},
+			},
+			{
+				Name:    "project_start_date_end_date",
+				Unique:  false,
+				Columns: []*schema.Column{ProjectsColumns[5], ProjectsColumns[6]},
+			},
+		},
+	}
+	// ProjectTeamMembersColumns holds the columns for the "project_team_members" table.
+	ProjectTeamMembersColumns = []*schema.Column{
+		{Name: "project_id", Type: field.TypeUUID},
+		{Name: "employee_id", Type: field.TypeUUID},
+	}
+	// ProjectTeamMembersTable holds the schema information for the "project_team_members" table.
+	ProjectTeamMembersTable = &schema.Table{
+		Name:       "project_team_members",
+		Columns:    ProjectTeamMembersColumns,
+		PrimaryKey: []*schema.Column{ProjectTeamMembersColumns[0], ProjectTeamMembersColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "project_team_members_project_id",
+				Columns:    []*schema.Column{ProjectTeamMembersColumns[0]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "project_team_members_employee_id",
+				Columns:    []*schema.Column{ProjectTeamMembersColumns[1]},
+				RefColumns: []*schema.Column{EmployeesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		DepartmentsTable,
 		EmployeesTable,
+		ProjectsTable,
+		ProjectTeamMembersTable,
 	}
 )
 
 func init() {
 	EmployeesTable.ForeignKeys[0].RefTable = DepartmentsTable
+	ProjectTeamMembersTable.ForeignKeys[0].RefTable = ProjectsTable
+	ProjectTeamMembersTable.ForeignKeys[1].RefTable = EmployeesTable
 }

@@ -1,0 +1,167 @@
+# Project Schema - Project entity and related operations
+# This file contains all project-related types, inputs, queries, and mutations
+
+# ============================================================================
+# Enums
+# ============================================================================
+
+"""Project status indicates the current state of the project"""
+enum ProjectStatus {
+  """Project is currently active and in progress"""
+  ACTIVE
+
+  """Project is completed"""
+  COMPLETED
+
+  """Project is temporarily on hold"""
+  ON_HOLD
+}
+
+"""Project priority level for resource allocation and planning"""
+enum ProjectPriority {
+  """High priority - urgent project"""
+  HIGH
+
+  """Medium priority - normal project"""
+  MEDIUM
+
+  """Low priority - can be deferred"""
+  LOW
+}
+
+# ============================================================================
+# Types
+# ============================================================================
+
+"""
+Project represents a work project with team members, timeline, and budget.
+Projects can have multiple employees as team members (many-to-many relationship).
+"""
+type Project {
+  """Unique identifier (UUID)"""
+  id: ID!
+
+  """Project name"""
+  name: String!
+
+  """Project description"""
+  description: String
+
+  """Current status of the project"""
+  status: ProjectStatus!
+
+  """Priority level for the project"""
+  priority: ProjectPriority!
+
+  """Project start date"""
+  startDate: String!
+
+  """Project end date (deadline)"""
+  endDate: String!
+
+  """Project budget amount"""
+  budget: Float!
+
+  """List of employees working on this project (team members)"""
+  teamMembers: [Employee!]
+}
+
+# ============================================================================
+# Input Types
+# ============================================================================
+
+"""Input for creating a new project"""
+input CreateProjectInput {
+  """Project name (required)"""
+  name: String!
+
+  """Project description (optional)"""
+  description: String
+
+  """Project status (defaults to ACTIVE if not provided)"""
+  status: ProjectStatus
+
+  """Project priority (defaults to MEDIUM if not provided)"""
+  priority: ProjectPriority
+
+  """Start date in YYYY-MM-DD format"""
+  startDate: String!
+
+  """End date in YYYY-MM-DD format"""
+  endDate: String!
+
+  """Budget amount"""
+  budget: Float!
+
+  """List of employee IDs to assign to this project"""
+  teamMemberIDs: [ID!]
+}
+
+"""Input for updating an existing project"""
+input UpdateProjectInput {
+  """Project name"""
+  name: String
+
+  """Project description"""
+  description: String
+
+  """Project status"""
+  status: ProjectStatus
+
+  """Project priority"""
+  priority: ProjectPriority
+
+  """Start date in YYYY-MM-DD format"""
+  startDate: String
+
+  """End date in YYYY-MM-DD format"""
+  endDate: String
+
+  """Budget amount"""
+  budget: Float
+
+  """List of employee IDs to assign to this project (replaces existing team)"""
+  teamMemberIDs: [ID!]
+}
+
+# ============================================================================
+# Queries
+# ============================================================================
+
+extend type Query {
+  """Get a single project by ID"""
+  project(id: ID!): Project
+
+  """Get all projects"""
+  projects: [Project!]!
+
+  """Get projects by status"""
+  projectsByStatus(status: ProjectStatus!): [Project!]!
+
+  """Get projects that an employee is working on"""
+  projectsByEmployee(employeeID: ID!): [Project!]!
+}
+
+# ============================================================================
+# Mutations
+# ============================================================================
+
+extend type Mutation {
+  """Create a new project"""
+  createProject(input: CreateProjectInput!): Project!
+
+  """Update an existing project"""
+  updateProject(id: ID!, input: UpdateProjectInput!): Project!
+
+  """
+  Delete a project by ID.
+  This will remove all team member associations but won't delete employees.
+  """
+  deleteProject(id: ID!): Boolean!
+
+  """Add an employee to a project team"""
+  addEmployeeToProject(projectID: ID!, employeeID: ID!): Project!
+
+  """Remove an employee from a project team"""
+  removeEmployeeFromProject(projectID: ID!, employeeID: ID!): Project!
+}

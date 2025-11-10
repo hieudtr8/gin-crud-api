@@ -16,6 +16,33 @@ import (
 	"github.com/google/uuid"
 )
 
+// Projects is the resolver for the projects field.
+func (r *employeeResolver) Projects(ctx context.Context, obj *model.Employee) ([]*model.Project, error) {
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Debug().
+		Str("operation", "employee.projects").
+		Str("employee_id", obj.ID).
+		Msg("Fetching projects for employee")
+
+	projects, err := r.ProjRepo.FindByEmployeeID(obj.ID)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("employee_id", obj.ID).
+			Msg("Failed to fetch projects for employee")
+		return nil, fmt.Errorf("failed to fetch projects for employee: %w", err)
+	}
+
+	log.Debug().
+		Str("employee_id", obj.ID).
+		Int("count", len(projects)).
+		Msg("Projects fetched for employee successfully")
+
+	return projects, nil
+}
+
 // CreateEmployee is the resolver for the createEmployee field.
 func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.CreateEmployeeInput) (*model.Employee, error) {
 	// Get logger with request ID
@@ -387,3 +414,8 @@ func (r *queryResolver) EmployeesByDepartment(ctx context.Context, departmentID 
 
 	return result, nil
 }
+
+// Employee returns EmployeeResolver implementation.
+func (r *Resolver) Employee() EmployeeResolver { return &employeeResolver{r} }
+
+type employeeResolver struct{ *Resolver }

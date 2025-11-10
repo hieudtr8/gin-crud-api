@@ -27,6 +27,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeDepartment holds the string denoting the department edge name in mutations.
 	EdgeDepartment = "department"
+	// EdgeProjects holds the string denoting the projects edge name in mutations.
+	EdgeProjects = "projects"
 	// Table holds the table name of the employee in the database.
 	Table = "employees"
 	// DepartmentTable is the table that holds the department relation/edge.
@@ -36,6 +38,11 @@ const (
 	DepartmentInverseTable = "departments"
 	// DepartmentColumn is the table column denoting the department relation/edge.
 	DepartmentColumn = "department_id"
+	// ProjectsTable is the table that holds the projects relation/edge. The primary key declared below.
+	ProjectsTable = "project_team_members"
+	// ProjectsInverseTable is the table name for the Project entity.
+	// It exists in this package in order to avoid circular dependency with the "project" package.
+	ProjectsInverseTable = "projects"
 )
 
 // Columns holds all SQL columns for employee fields.
@@ -47,6 +54,12 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
+
+var (
+	// ProjectsPrimaryKey and ProjectsColumn2 are the table columns denoting the
+	// primary key for the projects relation (M2M).
+	ProjectsPrimaryKey = []string{"project_id", "employee_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -112,10 +125,31 @@ func ByDepartmentField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newDepartmentStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByProjectsCount orders the results by projects count.
+func ByProjectsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newProjectsStep(), opts...)
+	}
+}
+
+// ByProjects orders the results by projects terms.
+func ByProjects(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProjectsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newDepartmentStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(DepartmentInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, DepartmentTable, DepartmentColumn),
+	)
+}
+func newProjectsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProjectsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, ProjectsTable, ProjectsPrimaryKey...),
 	)
 }

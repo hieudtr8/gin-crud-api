@@ -31,3 +31,16 @@ type EmployeeRepository interface {
 	Delete(id string) error
 	FindByDepartmentID(deptID string) ([]*model.Employee, error)
 }
+
+// ProjectRepository defines all operations for managing projects
+type ProjectRepository interface {
+	Save(project *model.Project) error
+	FindByID(id string) (*model.Project, error)
+	FindAll() ([]*model.Project, error)
+	Update(project *model.Project) error
+	Delete(id string) error
+	FindByStatus(status model.ProjectStatus) ([]*model.Project, error)
+	FindByEmployeeID(employeeID string) ([]*model.Project, error)
+	AddTeamMember(projectID string, employeeID string) error
+	RemoveTeamMember(projectID string, employeeID string) error
+}

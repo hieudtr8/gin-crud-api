@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gin-crud-api/internal/ent/department"
 	"gin-crud-api/internal/ent/employee"
+	"gin-crud-api/internal/ent/project"
 	"reflect"
 	"sync"
 
@@ -76,6 +77,7 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			department.Table: department.ValidColumn,
 			employee.Table:   employee.ValidColumn,
+			project.Table:    project.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

@@ -63,6 +63,13 @@ func (Employee) Edges() []ent.Edge {
 			Unique().                   // Each employee has exactly one department
 			Required().                 // Department is required (cannot be null)
 			Comment("The department this employee belongs to"),
+
+		// Many-to-many relationship with Project
+		// One employee can work on many projects
+		// This is the reverse edge (from Employee to Project)
+		edge.From("projects", Project.Type).
+			Ref("team_members").        // References the "team_members" edge in Project
+			Comment("Projects that this employee is working on"),
 	}
 }
 

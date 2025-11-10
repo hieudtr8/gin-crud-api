@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gin-crud-api/internal/ent/department"
 	"gin-crud-api/internal/ent/employee"
+	"gin-crud-api/internal/ent/project"
 	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -85,6 +86,21 @@ func (_c *EmployeeCreate) SetNillableID(v *uuid.UUID) *EmployeeCreate {
 // SetDepartment sets the "department" edge to the Department entity.
 func (_c *EmployeeCreate) SetDepartment(v *Department) *EmployeeCreate {
 	return _c.SetDepartmentID(v.ID)
+}
+
+// AddProjectIDs adds the "projects" edge to the Project entity by IDs.
+func (_c *EmployeeCreate) AddProjectIDs(ids ...uuid.UUID) *EmployeeCreate {
+	_c.mutation.AddProjectIDs(ids...)
+	return _c
+}
+
+// AddProjects adds the "projects" edges to the Project entity.
+func (_c *EmployeeCreate) AddProjects(v ...*Project) *EmployeeCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddProjectIDs(ids...)
 }
 
 // Mutation returns the EmployeeMutation object of the builder.
@@ -232,6 +248,22 @@ func (_c *EmployeeCreate) createSpec() (*Employee, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.DepartmentID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ProjectsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   employee.ProjectsTable,
+			Columns: employee.ProjectsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

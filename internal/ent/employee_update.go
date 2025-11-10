@@ -9,6 +9,7 @@ import (
 	"gin-crud-api/internal/ent/department"
 	"gin-crud-api/internal/ent/employee"
 	"gin-crud-api/internal/ent/predicate"
+	"gin-crud-api/internal/ent/project"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -83,6 +84,21 @@ func (_u *EmployeeUpdate) SetDepartment(v *Department) *EmployeeUpdate {
 	return _u.SetDepartmentID(v.ID)
 }
 
+// AddProjectIDs adds the "projects" edge to the Project entity by IDs.
+func (_u *EmployeeUpdate) AddProjectIDs(ids ...uuid.UUID) *EmployeeUpdate {
+	_u.mutation.AddProjectIDs(ids...)
+	return _u
+}
+
+// AddProjects adds the "projects" edges to the Project entity.
+func (_u *EmployeeUpdate) AddProjects(v ...*Project) *EmployeeUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddProjectIDs(ids...)
+}
+
 // Mutation returns the EmployeeMutation object of the builder.
 func (_u *EmployeeUpdate) Mutation() *EmployeeMutation {
 	return _u.mutation
@@ -92,6 +108,27 @@ func (_u *EmployeeUpdate) Mutation() *EmployeeMutation {
 func (_u *EmployeeUpdate) ClearDepartment() *EmployeeUpdate {
 	_u.mutation.ClearDepartment()
 	return _u
+}
+
+// ClearProjects clears all "projects" edges to the Project entity.
+func (_u *EmployeeUpdate) ClearProjects() *EmployeeUpdate {
+	_u.mutation.ClearProjects()
+	return _u
+}
+
+// RemoveProjectIDs removes the "projects" edge to Project entities by IDs.
+func (_u *EmployeeUpdate) RemoveProjectIDs(ids ...uuid.UUID) *EmployeeUpdate {
+	_u.mutation.RemoveProjectIDs(ids...)
+	return _u
+}
+
+// RemoveProjects removes "projects" edges to Project entities.
+func (_u *EmployeeUpdate) RemoveProjects(v ...*Project) *EmployeeUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveProjectIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -198,6 +235,51 @@ func (_u *EmployeeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ProjectsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   employee.ProjectsTable,
+			Columns: employee.ProjectsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedProjectsIDs(); len(nodes) > 0 && !_u.mutation.ProjectsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   employee.ProjectsTable,
+			Columns: employee.ProjectsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ProjectsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   employee.ProjectsTable,
+			Columns: employee.ProjectsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{employee.Label}
@@ -271,6 +353,21 @@ func (_u *EmployeeUpdateOne) SetDepartment(v *Department) *EmployeeUpdateOne {
 	return _u.SetDepartmentID(v.ID)
 }
 
+// AddProjectIDs adds the "projects" edge to the Project entity by IDs.
+func (_u *EmployeeUpdateOne) AddProjectIDs(ids ...uuid.UUID) *EmployeeUpdateOne {
+	_u.mutation.AddProjectIDs(ids...)
+	return _u
+}
+
+// AddProjects adds the "projects" edges to the Project entity.
+func (_u *EmployeeUpdateOne) AddProjects(v ...*Project) *EmployeeUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddProjectIDs(ids...)
+}
+
 // Mutation returns the EmployeeMutation object of the builder.
 func (_u *EmployeeUpdateOne) Mutation() *EmployeeMutation {
 	return _u.mutation
@@ -280,6 +377,27 @@ func (_u *EmployeeUpdateOne) Mutation() *EmployeeMutation {
 func (_u *EmployeeUpdateOne) ClearDepartment() *EmployeeUpdateOne {
 	_u.mutation.ClearDepartment()
 	return _u
+}
+
+// ClearProjects clears all "projects" edges to the Project entity.
+func (_u *EmployeeUpdateOne) ClearProjects() *EmployeeUpdateOne {
+	_u.mutation.ClearProjects()
+	return _u
+}
+
+// RemoveProjectIDs removes the "projects" edge to Project entities by IDs.
+func (_u *EmployeeUpdateOne) RemoveProjectIDs(ids ...uuid.UUID) *EmployeeUpdateOne {
+	_u.mutation.RemoveProjectIDs(ids...)
+	return _u
+}
+
+// RemoveProjects removes "projects" edges to Project entities.
+func (_u *EmployeeUpdateOne) RemoveProjects(v ...*Project) *EmployeeUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveProjectIDs(ids...)
 }
 
 // Where appends a list predicates to the EmployeeUpdate builder.
@@ -409,6 +527,51 @@ func (_u *EmployeeUpdateOne) sqlSave(ctx context.Context) (_node *Employee, err 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ProjectsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   employee.ProjectsTable,
+			Columns: employee.ProjectsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedProjectsIDs(); len(nodes) > 0 && !_u.mutation.ProjectsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   employee.ProjectsTable,
+			Columns: employee.ProjectsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ProjectsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   employee.ProjectsTable,
+			Columns: employee.ProjectsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

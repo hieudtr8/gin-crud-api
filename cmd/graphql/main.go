@@ -56,11 +56,12 @@ func main() {
 	// Create repositories
 	deptRepo := database.NewEntDepartmentRepo(entClient)
 	empRepo := database.NewEntEmployeeRepo(entClient)
+	projRepo := database.NewEntProjectRepo(entClient)
 
 	log.Info().Msg("Repositories initialized")
 
 	// Create GraphQL resolver with injected dependencies
-	resolver := graph.NewResolver(deptRepo, empRepo)
+	resolver := graph.NewResolver(deptRepo, empRepo, projRepo)
 
 	// Create GraphQL server with logging middleware
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))

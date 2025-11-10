@@ -5,6 +5,7 @@ package ent
 import (
 	"gin-crud-api/internal/ent/department"
 	"gin-crud-api/internal/ent/employee"
+	"gin-crud-api/internal/ent/project"
 	"gin-crud-api/internal/ent/schema"
 	"time"
 
@@ -59,4 +60,28 @@ func init() {
 	employeeDescID := employeeFields[0].Descriptor()
 	// employee.DefaultID holds the default value on creation for the id field.
 	employee.DefaultID = employeeDescID.Default.(func() uuid.UUID)
+	projectFields := schema.Project{}.Fields()
+	_ = projectFields
+	// projectDescName is the schema descriptor for name field.
+	projectDescName := projectFields[1].Descriptor()
+	// project.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	project.NameValidator = projectDescName.Validators[0].(func(string) error)
+	// projectDescBudget is the schema descriptor for budget field.
+	projectDescBudget := projectFields[7].Descriptor()
+	// project.BudgetValidator is a validator for the "budget" field. It is called by the builders before save.
+	project.BudgetValidator = projectDescBudget.Validators[0].(func(float64) error)
+	// projectDescCreatedAt is the schema descriptor for created_at field.
+	projectDescCreatedAt := projectFields[8].Descriptor()
+	// project.DefaultCreatedAt holds the default value on creation for the created_at field.
+	project.DefaultCreatedAt = projectDescCreatedAt.Default.(func() time.Time)
+	// projectDescUpdatedAt is the schema descriptor for updated_at field.
+	projectDescUpdatedAt := projectFields[9].Descriptor()
+	// project.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	project.DefaultUpdatedAt = projectDescUpdatedAt.Default.(func() time.Time)
+	// project.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	project.UpdateDefaultUpdatedAt = projectDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// projectDescID is the schema descriptor for id field.
+	projectDescID := projectFields[0].Descriptor()
+	// project.DefaultID holds the default value on creation for the id field.
+	project.DefaultID = projectDescID.Default.(func() uuid.UUID)
 }

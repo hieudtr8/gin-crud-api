@@ -2,6 +2,13 @@
 
 package model
 
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+)
+
 // Input for creating a new department
 type CreateDepartmentInput struct {
 	// Department name (required)
@@ -18,6 +25,26 @@ type CreateEmployeeInput struct {
 	DepartmentID string `json:"departmentID"`
 }
 
+// Input for creating a new project
+type CreateProjectInput struct {
+	// Project name (required)
+	Name string `json:"name"`
+	// Project description (optional)
+	Description *string `json:"description,omitempty"`
+	// Project status (defaults to ACTIVE if not provided)
+	Status *ProjectStatus `json:"status,omitempty"`
+	// Project priority (defaults to MEDIUM if not provided)
+	Priority *ProjectPriority `json:"priority,omitempty"`
+	// Start date in YYYY-MM-DD format
+	StartDate string `json:"startDate"`
+	// End date in YYYY-MM-DD format
+	EndDate string `json:"endDate"`
+	// Budget amount
+	Budget float64 `json:"budget"`
+	// List of employee IDs to assign to this project
+	TeamMemberIDs []string `json:"teamMemberIDs,omitempty"`
+}
+
 // Department represents an organizational department.
 // Each department can have multiple employees.
 type Department struct {
@@ -31,6 +58,7 @@ type Department struct {
 
 // Employee represents a person working in a department.
 // Each employee must belong to exactly one department.
+// Employees can work on multiple projects.
 type Employee struct {
 	// Unique identifier (UUID)
 	ID string `json:"id"`
@@ -42,10 +70,35 @@ type Employee struct {
 	DepartmentID string `json:"departmentID"`
 	// The department this employee belongs to
 	Department *Department `json:"department,omitempty"`
+	// List of projects this employee is working on
+	Projects []*Project `json:"projects,omitempty"`
 }
 
 // Mutation root type - All mutations extend this type
 type Mutation struct {
+}
+
+// Project represents a work project with team members, timeline, and budget.
+// Projects can have multiple employees as team members (many-to-many relationship).
+type Project struct {
+	// Unique identifier (UUID)
+	ID string `json:"id"`
+	// Project name
+	Name string `json:"name"`
+	// Project description
+	Description *string `json:"description,omitempty"`
+	// Current status of the project
+	Status ProjectStatus `json:"status"`
+	// Priority level for the project
+	Priority ProjectPriority `json:"priority"`
+	// Project start date
+	StartDate string `json:"startDate"`
+	// Project end date (deadline)
+	EndDate string `json:"endDate"`
+	// Project budget amount
+	Budget float64 `json:"budget"`
+	// List of employees working on this project (team members)
+	TeamMembers []*Employee `json:"teamMembers,omitempty"`
 }
 
 // Query root type - All queries extend this type
@@ -66,4 +119,146 @@ type UpdateEmployeeInput struct {
 	Email string `json:"email"`
 	// ID of the department (required, must reference an existing department)
 	DepartmentID string `json:"departmentID"`
+}
+
+// Input for updating an existing project
+type UpdateProjectInput struct {
+	// Project name
+	Name *string `json:"name,omitempty"`
+	// Project description
+	Description *string `json:"description,omitempty"`
+	// Project status
+	Status *ProjectStatus `json:"status,omitempty"`
+	// Project priority
+	Priority *ProjectPriority `json:"priority,omitempty"`
+	// Start date in YYYY-MM-DD format
+	StartDate *string `json:"startDate,omitempty"`
+	// End date in YYYY-MM-DD format
+	EndDate *string `json:"endDate,omitempty"`
+	// Budget amount
+	Budget *float64 `json:"budget,omitempty"`
+	// List of employee IDs to assign to this project (replaces existing team)
+	TeamMemberIDs []string `json:"teamMemberIDs,omitempty"`
+}
+
+// Project priority level for resource allocation and planning
+type ProjectPriority string
+
+const (
+	// High priority - urgent project
+	ProjectPriorityHigh ProjectPriority = "HIGH"
+	// Medium priority - normal project
+	ProjectPriorityMedium ProjectPriority = "MEDIUM"
+	// Low priority - can be deferred
+	ProjectPriorityLow ProjectPriority = "LOW"
+)
+
+var AllProjectPriority = []ProjectPriority{
+	ProjectPriorityHigh,
+	ProjectPriorityMedium,
+	ProjectPriorityLow,
+}
+
+func (e ProjectPriority) IsValid() bool {
+	switch e {
+	case ProjectPriorityHigh, ProjectPriorityMedium, ProjectPriorityLow:
+		return true
+	}
+	return false
+}
+
+func (e ProjectPriority) String() string {
+	return string(e)
+}
+
+func (e *ProjectPriority) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ProjectPriority(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ProjectPriority", str)
+	}
+	return nil
+}
+
+func (e ProjectPriority) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ProjectPriority) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ProjectPriority) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Project status indicates the current state of the project
+type ProjectStatus string
+
+const (
+	// Project is currently active and in progress
+	ProjectStatusActive ProjectStatus = "ACTIVE"
+	// Project is completed
+	ProjectStatusCompleted ProjectStatus = "COMPLETED"
+	// Project is temporarily on hold
+	ProjectStatusOnHold ProjectStatus = "ON_HOLD"
+)
+
+var AllProjectStatus = []ProjectStatus{
+	ProjectStatusActive,
+	ProjectStatusCompleted,
+	ProjectStatusOnHold,
+}
+
+func (e ProjectStatus) IsValid() bool {
+	switch e {
+	case ProjectStatusActive, ProjectStatusCompleted, ProjectStatusOnHold:
+		return true
+	}
+	return false
+}
+
+func (e ProjectStatus) String() string {
+	return string(e)
+}
+
+func (e *ProjectStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ProjectStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ProjectStatus", str)
+	}
+	return nil
+}
+
+func (e ProjectStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ProjectStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ProjectStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
