@@ -362,7 +362,6 @@ make generate  # Auto-creates project.resolvers.go
 - **Dependency injection**: Easy testing with mock repositories
 - **Docker deployment**: Multi-stage build (~15MB image)
 - **Interactive playground**: Built-in API explorer
-- **Comprehensive testing**: 78.5% repository coverage
 
 ## 🚨 Important Notes
 
@@ -381,5 +380,3 @@ make generate  # Auto-creates project.resolvers.go
 - **Legacy REST API**: See `internal/legacy/rest/README.md` for comparison
 
 ---
-
-**Made with ❤️ using Go, GraphQL, and EntGo**
