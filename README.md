@@ -380,7 +380,6 @@ internal/
 
 gqlgen.yml                       # gqlgen configuration
 docker-compose.yml               # PostgreSQL setup
-.env                             # Configuration (don't commit!)
 ```
 
 ### Important Files
