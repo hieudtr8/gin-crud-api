@@ -1,0 +1,67 @@
+# Department Schema - Department entity and related operations
+# This file contains all department-related types, inputs, queries, and mutations
+
+# ============================================================================
+# Types
+# ============================================================================
+
+"""
+Department represents an organizational department.
+Each department can have multiple employees.
+"""
+type Department {
+  """Unique identifier (UUID)"""
+  id: ID!
+
+  """Department name"""
+  name: String!
+
+  """List of employees in this department"""
+  employees: [Employee!]
+}
+
+# ============================================================================
+# Input Types
+# ============================================================================
+
+"""Input for creating a new department"""
+input CreateDepartmentInput {
+  """Department name (required)"""
+  name: String!
+}
+
+"""Input for updating an existing department"""
+input UpdateDepartmentInput {
+  """Department name (required)"""
+  name: String!
+}
+
+# ============================================================================
+# Queries
+# ============================================================================
+
+extend type Query {
+  """Get a single department by ID"""
+  department(id: ID!): Department
+
+  """Get all departments"""
+  departments: [Department!]!
+}
+
+# ============================================================================
+# Mutations
+# ============================================================================
+
+extend type Mutation {
+  """Create a new department"""
+  createDepartment(input: CreateDepartmentInput!): Department!
+
+  """Update an existing department"""
+  updateDepartment(id: ID!, input: UpdateDepartmentInput!): Department!
+
+  """
+  Delete a department by ID.
+  This will also delete all employees in the department (cascade delete).
+  """
+  deleteDepartment(id: ID!): Boolean!
+}

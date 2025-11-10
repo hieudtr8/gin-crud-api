@@ -12,200 +12,9 @@ import (
 	"gin-crud-api/internal/graph/model"
 	"gin-crud-api/internal/logger"
 	"gin-crud-api/internal/middleware"
-	"regexp"
 
 	"github.com/google/uuid"
 )
-
-// ============================================================================
-// Mutation Resolvers - Department
-// ============================================================================
-
-// CreateDepartment is the resolver for the createDepartment field.
-func (r *mutationResolver) CreateDepartment(ctx context.Context, input model.CreateDepartmentInput) (*model.Department, error) {
-	// Get logger with request ID
-	requestID := middleware.GetRequestID(ctx)
-	log := logger.WithRequestID(requestID)
-
-	log.Info().
-		Str("operation", "createDepartment").
-		Str("name", input.Name).
-		Msg("Creating department")
-
-	// Validate input
-	if input.Name == "" {
-		log.Error().
-			Str("operation", "createDepartment").
-			Msg("Validation failed: department name is required")
-		return nil, errors.New("department name is required")
-	}
-
-	// Create GraphQL model
-	dept := &model.Department{
-		ID:   uuid.New().String(),
-		Name: input.Name,
-	}
-
-	// Save to repository
-	if err := r.DeptRepo.Save(dept); err != nil {
-		log.Error().
-			Err(err).
-			Str("operation", "createDepartment").
-			Str("department_id", dept.ID).
-			Msg("Failed to save department")
-		return nil, fmt.Errorf("failed to create department: %w", err)
-	}
-
-	log.Info().
-		Str("operation", "createDepartment").
-		Str("department_id", dept.ID).
-		Str("name", dept.Name).
-		Msg("Department created successfully")
-
-	return dept, nil
-}
-
-// UpdateDepartment is the resolver for the updateDepartment field.
-func (r *mutationResolver) UpdateDepartment(ctx context.Context, id string, input model.UpdateDepartmentInput) (*model.Department, error) {
-	// Get logger with request ID
-	requestID := middleware.GetRequestID(ctx)
-	log := logger.WithRequestID(requestID)
-
-	log.Info().
-		Str("operation", "updateDepartment").
-		Str("department_id", id).
-		Str("new_name", input.Name).
-		Msg("Updating department")
-
-	// Validate input
-	if input.Name == "" {
-		log.Error().
-			Str("operation", "updateDepartment").
-			Str("department_id", id).
-			Msg("Validation failed: department name is required")
-		return nil, errors.New("department name is required")
-	}
-
-	// Check if department exists
-	existing, err := r.DeptRepo.FindByID(id)
-	if err != nil {
-		if errors.Is(err, database.ErrNotFound) {
-			log.Warn().
-				Str("operation", "updateDepartment").
-				Str("department_id", id).
-				Msg("Department not found")
-			return nil, fmt.Errorf("department not found")
-		}
-		log.Error().
-			Err(err).
-			Str("operation", "updateDepartment").
-			Str("department_id", id).
-			Msg("Failed to find department")
-		return nil, fmt.Errorf("failed to find department: %w", err)
-	}
-
-	// Update GraphQL model
-	existing.Name = input.Name
-
-	// Save to repository
-	if err := r.DeptRepo.Update(existing); err != nil {
-		log.Error().
-			Err(err).
-			Str("operation", "updateDepartment").
-			Str("department_id", id).
-			Msg("Failed to update department")
-		return nil, fmt.Errorf("failed to update department: %w", err)
-	}
-
-	log.Info().
-		Str("operation", "updateDepartment").
-		Str("department_id", existing.ID).
-		Str("name", existing.Name).
-		Msg("Department updated successfully")
-
-	return existing, nil
-}
-
-// DeleteDepartment is the resolver for the deleteDepartment field.
-func (r *mutationResolver) DeleteDepartment(ctx context.Context, id string) (bool, error) {
-	// Get logger with request ID
-	requestID := middleware.GetRequestID(ctx)
-	log := logger.WithRequestID(requestID)
-
-	log.Info().
-		Str("operation", "deleteDepartment").
-		Str("department_id", id).
-		Msg("Deleting department with cascade")
-
-	// Check if department exists
-	_, err := r.DeptRepo.FindByID(id)
-	if err != nil {
-		if errors.Is(err, database.ErrNotFound) {
-			log.Warn().
-				Str("operation", "deleteDepartment").
-				Str("department_id", id).
-				Msg("Department not found")
-			return false, fmt.Errorf("department not found")
-		}
-		log.Error().
-			Err(err).
-			Str("operation", "deleteDepartment").
-			Str("department_id", id).
-			Msg("Failed to find department")
-		return false, fmt.Errorf("failed to find department: %w", err)
-	}
-
-	// Cascade delete: delete all employees in this department
-	employees, err := r.EmpRepo.FindByDepartmentID(id)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("operation", "deleteDepartment").
-			Str("department_id", id).
-			Msg("Failed to find employees for cascade delete")
-		return false, fmt.Errorf("failed to find employees: %w", err)
-	}
-
-	log.Info().
-		Str("operation", "deleteDepartment").
-		Str("department_id", id).
-		Int("employee_count", len(employees)).
-		Msg("Cascade deleting employees")
-
-	for _, emp := range employees {
-		if err := r.EmpRepo.Delete(emp.ID); err != nil {
-			log.Error().
-				Err(err).
-				Str("operation", "deleteDepartment").
-				Str("department_id", id).
-				Str("employee_id", emp.ID).
-				Msg("Failed to delete employee during cascade")
-			return false, fmt.Errorf("failed to delete employee %s: %w", emp.ID, err)
-		}
-	}
-
-	// Delete the department
-	if err := r.DeptRepo.Delete(id); err != nil {
-		log.Error().
-			Err(err).
-			Str("operation", "deleteDepartment").
-			Str("department_id", id).
-			Msg("Failed to delete department")
-		return false, fmt.Errorf("failed to delete department: %w", err)
-	}
-
-	log.Info().
-		Str("operation", "deleteDepartment").
-		Str("department_id", id).
-		Int("employees_deleted", len(employees)).
-		Msg("Department and employees deleted successfully")
-
-	return true, nil
-}
-
-// ============================================================================
-// Mutation Resolvers - Employee
-// ============================================================================
 
 // CreateEmployee is the resolver for the createEmployee field.
 func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.CreateEmployeeInput) (*model.Employee, error) {
@@ -291,7 +100,6 @@ func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.Creat
 		Str("department_id", emp.DepartmentID).
 		Msg("Employee created successfully")
 
-	
 	return &model.Employee{
 		ID:           emp.ID,
 		Name:         emp.Name,
@@ -406,7 +214,6 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 		Str("department_id", existing.DepartmentID).
 		Msg("Employee updated successfully")
 
-	
 	return &model.Employee{
 		ID:           existing.ID,
 		Name:         existing.Name,
@@ -461,90 +268,6 @@ func (r *mutationResolver) DeleteEmployee(ctx context.Context, id string) (bool,
 
 	return true, nil
 }
-
-// ============================================================================
-// Query Resolvers - Department
-// ============================================================================
-
-// Department is the resolver for the department field.
-func (r *queryResolver) Department(ctx context.Context, id string) (*model.Department, error) {
-	// Get logger with request ID
-	requestID := middleware.GetRequestID(ctx)
-	log := logger.WithRequestID(requestID)
-
-	log.Info().
-		Str("operation", "department").
-		Str("department_id", id).
-		Msg("Fetching department")
-
-	dept, err := r.DeptRepo.FindByID(id)
-	if err != nil {
-		if errors.Is(err, database.ErrNotFound) {
-			log.Debug().
-				Str("operation", "department").
-				Str("department_id", id).
-				Msg("Department not found")
-			return nil, nil // GraphQL convention: return nil for not found
-		}
-		log.Error().
-			Err(err).
-			Str("operation", "department").
-			Str("department_id", id).
-			Msg("Failed to find department")
-		return nil, fmt.Errorf("failed to find department: %w", err)
-	}
-
-	log.Debug().
-		Str("operation", "department").
-		Str("department_id", dept.ID).
-		Str("name", dept.Name).
-		Msg("Department found")
-
-	return &model.Department{
-		ID:   dept.ID,
-		Name: dept.Name,
-	}, nil
-}
-
-// Departments is the resolver for the departments field.
-func (r *queryResolver) Departments(ctx context.Context) ([]*model.Department, error) {
-	// Get logger with request ID
-	requestID := middleware.GetRequestID(ctx)
-	log := logger.WithRequestID(requestID)
-
-	log.Info().
-		Str("operation", "departments").
-		Msg("Fetching all departments")
-
-	depts, err := r.DeptRepo.FindAll()
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("operation", "departments").
-			Msg("Failed to fetch departments")
-		return nil, fmt.Errorf("failed to fetch departments: %w", err)
-	}
-
-	
-	result := make([]*model.Department, len(depts))
-	for i, dept := range depts {
-		result[i] = &model.Department{
-			ID:   dept.ID,
-			Name: dept.Name,
-		}
-	}
-
-	log.Debug().
-		Str("operation", "departments").
-		Int("count", len(result)).
-		Msg("Departments fetched successfully")
-
-	return result, nil
-}
-
-// ============================================================================
-// Query Resolvers - Employee
-// ============================================================================
 
 // Employee is the resolver for the employee field.
 func (r *queryResolver) Employee(ctx context.Context, id string) (*model.Employee, error) {
@@ -664,31 +387,3 @@ func (r *queryResolver) EmployeesByDepartment(ctx context.Context, departmentID 
 
 	return result, nil
 }
-
-// ============================================================================
-// Query Resolvers - Health Check
-// ============================================================================
-
-// Health is the resolver for the health field.
-func (r *queryResolver) Health(ctx context.Context) (string, error) {
-	return "ok", nil
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-// isValidEmail validates email format
-func isValidEmail(email string) bool {
-	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-	return emailRegex.MatchString(email)
-}
-
-// Mutation returns MutationResolver implementation.
-func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
-
-// Query returns QueryResolver implementation.
-func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
-
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }

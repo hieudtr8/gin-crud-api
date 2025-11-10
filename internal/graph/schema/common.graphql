@@ -1,0 +1,19 @@
+# Common Schema - Base types and health check
+# This file defines the base Query and Mutation types that will be extended by other schema files
+
+# ============================================================================
+# Base Types - Extended by entity-specific schemas
+# ============================================================================
+
+"""
+Query root type - All queries extend this type
+"""
+type Query {
+  """Health check endpoint - Returns 'ok' if service is running"""
+  health: String!
+}
+
+"""
+Mutation root type - All mutations extend this type
+"""
+type Mutation

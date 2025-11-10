@@ -44,9 +44,11 @@ type Employee struct {
 	Department *Department `json:"department,omitempty"`
 }
 
+// Mutation root type - All mutations extend this type
 type Mutation struct {
 }
 
+// Query root type - All queries extend this type
 type Query struct {
 }
 

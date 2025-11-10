@@ -1,24 +1,9 @@
-# GraphQL Schema for Gin CRUD API
-# Defines all types, queries, and mutations for Department and Employee management
+# Employee Schema - Employee entity and related operations
+# This file contains all employee-related types, inputs, queries, and mutations
 
 # ============================================================================
-# Types - Core domain models
+# Types
 # ============================================================================
-
-"""
-Department represents an organizational department.
-Each department can have multiple employees.
-"""
-type Department {
-  """Unique identifier (UUID)"""
-  id: ID!
-
-  """Department name"""
-  name: String!
-
-  """List of employees in this department"""
-  employees: [Employee!]
-}
 
 """
 Employee represents a person working in a department.
@@ -42,20 +27,8 @@ type Employee {
 }
 
 # ============================================================================
-# Input Types - For mutations
+# Input Types
 # ============================================================================
-
-"""Input for creating a new department"""
-input CreateDepartmentInput {
-  """Department name (required)"""
-  name: String!
-}
-
-"""Input for updating an existing department"""
-input UpdateDepartmentInput {
-  """Department name (required)"""
-  name: String!
-}
 
 """Input for creating a new employee"""
 input CreateEmployeeInput {
@@ -82,16 +55,10 @@ input UpdateEmployeeInput {
 }
 
 # ============================================================================
-# Queries - Read operations
+# Queries
 # ============================================================================
 
-type Query {
-  """Get a single department by ID"""
-  department(id: ID!): Department
-
-  """Get all departments"""
-  departments: [Department!]!
-
+extend type Query {
   """Get a single employee by ID"""
   employee(id: ID!): Employee
 
@@ -100,30 +67,13 @@ type Query {
 
   """Get all employees in a specific department"""
   employeesByDepartment(departmentID: ID!): [Employee!]!
-
-  """Health check endpoint"""
-  health: String!
 }
 
 # ============================================================================
-# Mutations - Write operations (Create, Update, Delete)
+# Mutations
 # ============================================================================
 
-type Mutation {
-  # Department mutations
-  """Create a new department"""
-  createDepartment(input: CreateDepartmentInput!): Department!
-
-  """Update an existing department"""
-  updateDepartment(id: ID!, input: UpdateDepartmentInput!): Department!
-
-  """
-  Delete a department by ID.
-  This will also delete all employees in the department (cascade delete).
-  """
-  deleteDepartment(id: ID!): Boolean!
-
-  # Employee mutations
+extend type Mutation {
   """Create a new employee (department must exist)"""
   createEmployee(input: CreateEmployeeInput!): Employee!
 

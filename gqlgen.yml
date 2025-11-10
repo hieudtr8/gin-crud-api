@@ -2,8 +2,9 @@
 # Reference: https://gqlgen.com/config/
 
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
+# Organized by entity for better maintainability
 schema:
-  - internal/graph/*.graphql
+  - internal/graph/schema/*.graphql
 
 # Where should the generated server code go?
 exec:
