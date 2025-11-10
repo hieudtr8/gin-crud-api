@@ -7,7 +7,7 @@ import (
 	"gin-crud-api/internal/ent"
 	"gin-crud-api/internal/ent/employee"
 	"gin-crud-api/internal/logger"
-	"gin-crud-api/internal/models"
+	"gin-crud-api/internal/graph/model"
 
 	"github.com/google/uuid"
 )
@@ -23,7 +23,7 @@ func NewEntEmployeeRepo(client *ent.Client) EmployeeRepository {
 }
 
 // Save creates a new employee in the database
-func (r *EntEmployeeRepo) Save(emp *models.Employee) error {
+func (r *EntEmployeeRepo) Save(emp *model.Employee) error {
 	ctx := context.Background()
 	log := logger.WithComponent("EmployeeRepo")
 
@@ -79,7 +79,7 @@ func (r *EntEmployeeRepo) Save(emp *models.Employee) error {
 }
 
 // FindByID retrieves an employee by their ID
-func (r *EntEmployeeRepo) FindByID(id string) (*models.Employee, error) {
+func (r *EntEmployeeRepo) FindByID(id string) (*model.Employee, error) {
 	ctx := context.Background()
 	log := logger.WithComponent("EmployeeRepo")
 
@@ -104,7 +104,7 @@ func (r *EntEmployeeRepo) FindByID(id string) (*models.Employee, error) {
 			log.Debug().
 				Str("employee_id", id).
 				Msg("Employee not found in database")
-			return nil, models.ErrNotFound
+			return nil, ErrNotFound
 		}
 		log.Error().
 			Err(err).
@@ -118,8 +118,8 @@ func (r *EntEmployeeRepo) FindByID(id string) (*models.Employee, error) {
 		Str("name", entEmp.Name).
 		Msg("Employee found successfully")
 
-	// Convert EntGo entity to domain model
-	return &models.Employee{
+	// Convert EntGo entity to GraphQL model
+	return &model.Employee{
 		ID:           entEmp.ID.String(),
 		Name:         entEmp.Name,
 		Email:        entEmp.Email,
@@ -128,7 +128,7 @@ func (r *EntEmployeeRepo) FindByID(id string) (*models.Employee, error) {
 }
 
 // FindAll retrieves all employees from the database
-func (r *EntEmployeeRepo) FindAll() ([]*models.Employee, error) {
+func (r *EntEmployeeRepo) FindAll() ([]*model.Employee, error) {
 	ctx := context.Background()
 	log := logger.WithComponent("EmployeeRepo")
 
@@ -143,10 +143,10 @@ func (r *EntEmployeeRepo) FindAll() ([]*models.Employee, error) {
 		return nil, fmt.Errorf("failed to find all employees: %w", err)
 	}
 
-	// Convert EntGo entities to domain models
-	employees := make([]*models.Employee, len(entEmps))
+	// Convert EntGo entity to GraphQL models
+	employees := make([]*model.Employee, len(entEmps))
 	for i, entEmp := range entEmps {
-		employees[i] = &models.Employee{
+		employees[i] = &model.Employee{
 			ID:           entEmp.ID.String(),
 			Name:         entEmp.Name,
 			Email:        entEmp.Email,
@@ -162,7 +162,7 @@ func (r *EntEmployeeRepo) FindAll() ([]*models.Employee, error) {
 }
 
 // Update updates an existing employee
-func (r *EntEmployeeRepo) Update(emp *models.Employee) error {
+func (r *EntEmployeeRepo) Update(emp *model.Employee) error {
 	ctx := context.Background()
 	log := logger.WithComponent("EmployeeRepo")
 
@@ -205,7 +205,7 @@ func (r *EntEmployeeRepo) Update(emp *models.Employee) error {
 			log.Debug().
 				Str("employee_id", emp.ID).
 				Msg("Employee not found for update")
-			return models.ErrNotFound
+			return ErrNotFound
 		}
 		log.Error().
 			Err(err).
@@ -248,7 +248,7 @@ func (r *EntEmployeeRepo) Delete(id string) error {
 			log.Debug().
 				Str("employee_id", id).
 				Msg("Employee not found for deletion")
-			return models.ErrNotFound
+			return ErrNotFound
 		}
 		log.Error().
 			Err(err).
@@ -265,7 +265,7 @@ func (r *EntEmployeeRepo) Delete(id string) error {
 }
 
 // FindByDepartmentID retrieves all employees in a specific department
-func (r *EntEmployeeRepo) FindByDepartmentID(deptID string) ([]*models.Employee, error) {
+func (r *EntEmployeeRepo) FindByDepartmentID(deptID string) ([]*model.Employee, error) {
 	ctx := context.Background()
 	log := logger.WithComponent("EmployeeRepo")
 
@@ -297,10 +297,10 @@ func (r *EntEmployeeRepo) FindByDepartmentID(deptID string) ([]*models.Employee,
 		return nil, fmt.Errorf("failed to find employees by department: %w", err)
 	}
 
-	// Convert EntGo entities to domain models
-	employees := make([]*models.Employee, len(entEmps))
+	// Convert EntGo entity to GraphQL models
+	employees := make([]*model.Employee, len(entEmps))
 	for i, entEmp := range entEmps {
-		employees[i] = &models.Employee{
+		employees[i] = &model.Employee{
 			ID:           entEmp.ID.String(),
 			Name:         entEmp.Name,
 			Email:        entEmp.Email,

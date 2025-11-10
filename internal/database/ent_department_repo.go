@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"gin-crud-api/internal/ent"
+	"gin-crud-api/internal/graph/model"
 	"gin-crud-api/internal/logger"
-	"gin-crud-api/internal/models"
 
 	"github.com/google/uuid"
 )
@@ -22,7 +22,7 @@ func NewEntDepartmentRepo(client *ent.Client) DepartmentRepository {
 }
 
 // Save creates a new department in the database
-func (r *EntDepartmentRepo) Save(dept *models.Department) error {
+func (r *EntDepartmentRepo) Save(dept *model.Department) error {
 	ctx := context.Background()
 	log := logger.WithComponent("DepartmentRepo")
 
@@ -65,7 +65,7 @@ func (r *EntDepartmentRepo) Save(dept *models.Department) error {
 }
 
 // FindByID retrieves a department by its ID
-func (r *EntDepartmentRepo) FindByID(id string) (*models.Department, error) {
+func (r *EntDepartmentRepo) FindByID(id string) (*model.Department, error) {
 	ctx := context.Background()
 	log := logger.WithComponent("DepartmentRepo")
 
@@ -90,7 +90,7 @@ func (r *EntDepartmentRepo) FindByID(id string) (*models.Department, error) {
 			log.Debug().
 				Str("department_id", id).
 				Msg("Department not found in database")
-			return nil, models.ErrNotFound
+			return nil, ErrNotFound
 		}
 		log.Error().
 			Err(err).
@@ -104,15 +104,15 @@ func (r *EntDepartmentRepo) FindByID(id string) (*models.Department, error) {
 		Str("name", entDept.Name).
 		Msg("Department found successfully")
 
-	// Convert EntGo entity to domain model
-	return &models.Department{
+	// Convert EntGo entity to GraphQL model
+	return &model.Department{
 		ID:   entDept.ID.String(),
 		Name: entDept.Name,
 	}, nil
 }
 
 // FindAll retrieves all departments from the database
-func (r *EntDepartmentRepo) FindAll() ([]*models.Department, error) {
+func (r *EntDepartmentRepo) FindAll() ([]*model.Department, error) {
 	ctx := context.Background()
 	log := logger.WithComponent("DepartmentRepo")
 
@@ -127,10 +127,10 @@ func (r *EntDepartmentRepo) FindAll() ([]*models.Department, error) {
 		return nil, fmt.Errorf("failed to find all departments: %w", err)
 	}
 
-	// Convert EntGo entities to domain models
-	departments := make([]*models.Department, len(entDepts))
+	// Convert EntGo entities to GraphQL models
+	departments := make([]*model.Department, len(entDepts))
 	for i, entDept := range entDepts {
-		departments[i] = &models.Department{
+		departments[i] = &model.Department{
 			ID:   entDept.ID.String(),
 			Name: entDept.Name,
 		}
@@ -144,7 +144,7 @@ func (r *EntDepartmentRepo) FindAll() ([]*models.Department, error) {
 }
 
 // Update updates an existing department
-func (r *EntDepartmentRepo) Update(dept *models.Department) error {
+func (r *EntDepartmentRepo) Update(dept *model.Department) error {
 	ctx := context.Background()
 	log := logger.WithComponent("DepartmentRepo")
 
@@ -174,7 +174,7 @@ func (r *EntDepartmentRepo) Update(dept *models.Department) error {
 			log.Debug().
 				Str("department_id", dept.ID).
 				Msg("Department not found for update")
-			return models.ErrNotFound
+			return ErrNotFound
 		}
 		log.Error().
 			Err(err).
@@ -217,7 +217,7 @@ func (r *EntDepartmentRepo) Delete(id string) error {
 			log.Debug().
 				Str("department_id", id).
 				Msg("Department not found for deletion")
-			return models.ErrNotFound
+			return ErrNotFound
 		}
 		log.Error().
 			Err(err).

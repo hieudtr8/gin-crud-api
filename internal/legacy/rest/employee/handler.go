@@ -2,7 +2,8 @@ package employee
 
 import (
 	"gin-crud-api/internal/database"
-	"gin-crud-api/internal/models"
+	"gin-crud-api/internal/legacy"
+	"gin-crud-api/internal/graph/model"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +21,7 @@ func NewHandler(empRepo database.EmployeeRepository, deptRepo database.Departmen
 
 // Create handles POST /employees
 func (h *Handler) Create(c *gin.Context) {
-	var req models.CreateEmployeeRequest
+	var req legacy.CreateEmployeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -33,7 +34,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	emp := &models.Employee{
+	emp := &model.Employee{
 		ID:           uuid.NewString(),
 		Name:         req.Name,
 		Email:        req.Email,
@@ -68,7 +69,7 @@ func (h *Handler) List(c *gin.Context) {
 	}
 
 	if employees == nil {
-		employees = []*models.Employee{}
+		employees = []*model.Employee{}
 	}
 
 	c.JSON(http.StatusOK, employees)
@@ -84,7 +85,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.UpdateEmployeeRequest
+	var req legacy.UpdateEmployeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

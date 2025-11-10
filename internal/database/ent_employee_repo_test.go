@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	"gin-crud-api/internal/models"
+	"gin-crud-api/internal/graph/model"
 	"gin-crud-api/internal/testutil"
 
 	"github.com/google/uuid"
@@ -20,7 +20,7 @@ func TestEntEmployeeRepo_Save(t *testing.T) {
 
 	dept := testutil.SeedTestDepartment(t, client, "Engineering")
 
-	emp := &models.Employee{
+	emp := &model.Employee{
 		ID:           uuid.New().String(),
 		Name:         "John Doe",
 		Email:        "john.doe@example.com",
@@ -50,7 +50,7 @@ func TestEntEmployeeRepo_Save_InvalidEmployeeID(t *testing.T) {
 
 	dept := testutil.SeedTestDepartment(t, client, "Engineering")
 
-	emp := &models.Employee{
+	emp := &model.Employee{
 		ID:           "invalid-uuid",
 		Name:         "John Doe",
 		Email:        "john.doe@example.com",
@@ -71,7 +71,7 @@ func TestEntEmployeeRepo_Save_InvalidDepartmentID(t *testing.T) {
 	defer client.Close()
 	repo := NewEntEmployeeRepo(client)
 
-	emp := &models.Employee{
+	emp := &model.Employee{
 		ID:           uuid.New().String(),
 		Name:         "John Doe",
 		Email:        "john.doe@example.com",
@@ -118,7 +118,7 @@ func TestEntEmployeeRepo_FindByID_NotFound(t *testing.T) {
 
 	// Assert: Should return ErrNotFound
 	require.Error(t, err)
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotFound)
 	assert.Nil(t, found)
 }
 
@@ -189,7 +189,7 @@ func TestEntEmployeeRepo_Update(t *testing.T) {
 	emp := testutil.SeedTestEmployee(t, client, "John Doe", "john.doe@example.com", dept1.ID)
 
 	// Test: Update employee
-	updated := &models.Employee{
+	updated := &model.Employee{
 		ID:           emp.ID.String(),
 		Name:         "John Smith",
 		Email:        "john.smith@example.com",
@@ -217,7 +217,7 @@ func TestEntEmployeeRepo_Update_NotFound(t *testing.T) {
 	dept := testutil.SeedTestDepartment(t, client, "Engineering")
 
 	// Test: Update non-existent employee
-	nonExistent := &models.Employee{
+	nonExistent := &model.Employee{
 		ID:           uuid.New().String(),
 		Name:         "Non-existent",
 		Email:        "non@example.com",
@@ -227,7 +227,7 @@ func TestEntEmployeeRepo_Update_NotFound(t *testing.T) {
 
 	// Assert: Should return ErrNotFound
 	require.Error(t, err)
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestEntEmployeeRepo_Update_InvalidEmployeeID(t *testing.T) {
@@ -239,7 +239,7 @@ func TestEntEmployeeRepo_Update_InvalidEmployeeID(t *testing.T) {
 	dept := testutil.SeedTestDepartment(t, client, "Engineering")
 
 	// Test: Update with invalid employee UUID
-	invalid := &models.Employee{
+	invalid := &model.Employee{
 		ID:           "invalid-uuid",
 		Name:         "Invalid",
 		Email:        "invalid@example.com",
@@ -262,7 +262,7 @@ func TestEntEmployeeRepo_Update_InvalidDepartmentID(t *testing.T) {
 	emp := testutil.SeedTestEmployee(t, client, "John Doe", "john.doe@example.com", dept.ID)
 
 	// Test: Update with invalid department UUID
-	invalid := &models.Employee{
+	invalid := &model.Employee{
 		ID:           emp.ID.String(),
 		Name:         "John Doe",
 		Email:        "john.doe@example.com",
@@ -293,7 +293,7 @@ func TestEntEmployeeRepo_Delete(t *testing.T) {
 	// Verify: Employee no longer exists
 	found, err := repo.FindByID(emp.ID.String())
 	require.Error(t, err)
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotFound)
 	assert.Nil(t, found)
 }
 
@@ -309,7 +309,7 @@ func TestEntEmployeeRepo_Delete_NotFound(t *testing.T) {
 
 	// Assert: Should return ErrNotFound
 	require.Error(t, err)
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestEntEmployeeRepo_Delete_InvalidID(t *testing.T) {

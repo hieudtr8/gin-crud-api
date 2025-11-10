@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	"gin-crud-api/internal/models"
+	"gin-crud-api/internal/graph/model"
 	"gin-crud-api/internal/testutil"
 
 	"github.com/google/uuid"
@@ -19,7 +19,7 @@ func TestEntDepartmentRepo_Save(t *testing.T) {
 	repo := NewEntDepartmentRepo(client)
 
 	// Test: Save a new department
-	dept := &models.Department{
+	dept := &model.Department{
 		ID:   uuid.New().String(),
 		Name: "Engineering",
 	}
@@ -43,7 +43,7 @@ func TestEntDepartmentRepo_Save_InvalidID(t *testing.T) {
 	repo := NewEntDepartmentRepo(client)
 
 	// Test: Save department with invalid UUID
-	dept := &models.Department{
+	dept := &model.Department{
 		ID:   "invalid-uuid",
 		Name: "Engineering",
 	}
@@ -84,7 +84,7 @@ func TestEntDepartmentRepo_FindByID_NotFound(t *testing.T) {
 
 	// Assert: Should return ErrNotFound
 	require.Error(t, err)
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotFound)
 	assert.Nil(t, found)
 }
 
@@ -133,7 +133,7 @@ func TestEntDepartmentRepo_FindAll(t *testing.T) {
 
 	// Verify: IDs match
 	for i, dept := range departments {
-		assert.Contains(t, found, &models.Department{
+		assert.Contains(t, found, &model.Department{
 			ID:   dept.ID.String(),
 			Name: dept.Name,
 		})
@@ -165,7 +165,7 @@ func TestEntDepartmentRepo_Update(t *testing.T) {
 	dept := testutil.SeedTestDepartment(t, client, "Engineering")
 
 	// Test: Update department name
-	updated := &models.Department{
+	updated := &model.Department{
 		ID:   dept.ID.String(),
 		Name: "Engineering & Technology",
 	}
@@ -187,7 +187,7 @@ func TestEntDepartmentRepo_Update_NotFound(t *testing.T) {
 	repo := NewEntDepartmentRepo(client)
 
 	// Test: Update non-existent department
-	nonExistent := &models.Department{
+	nonExistent := &model.Department{
 		ID:   uuid.New().String(),
 		Name: "Non-existent",
 	}
@@ -195,7 +195,7 @@ func TestEntDepartmentRepo_Update_NotFound(t *testing.T) {
 
 	// Assert: Should return ErrNotFound
 	require.Error(t, err)
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestEntDepartmentRepo_Update_InvalidID(t *testing.T) {
@@ -205,7 +205,7 @@ func TestEntDepartmentRepo_Update_InvalidID(t *testing.T) {
 	repo := NewEntDepartmentRepo(client)
 
 	// Test: Update with invalid UUID
-	invalid := &models.Department{
+	invalid := &model.Department{
 		ID:   "invalid-uuid",
 		Name: "Invalid",
 	}
@@ -233,7 +233,7 @@ func TestEntDepartmentRepo_Delete(t *testing.T) {
 	// Verify: Department no longer exists
 	found, err := repo.FindByID(dept.ID.String())
 	require.Error(t, err)
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotFound)
 	assert.Nil(t, found)
 }
 
@@ -249,7 +249,7 @@ func TestEntDepartmentRepo_Delete_NotFound(t *testing.T) {
 
 	// Assert: Should return ErrNotFound
 	require.Error(t, err)
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestEntDepartmentRepo_Delete_InvalidID(t *testing.T) {

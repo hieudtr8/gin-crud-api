@@ -4,9 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **GraphQL API** CRUD application built with Go, gqlgen, and EntGo ORM for managing Departments and Employees. The project demonstrates clean architecture with dependency injection, repository pattern, schema-first GraphQL development, type-safe database operations with EntGo, and automatic schema migrations. Full CRUD operations (queries and mutations) are implemented using PostgreSQL as the data store.
+This is a **GraphQL API** built with Go, gqlgen, and EntGo ORM for managing Departments and Employees. The project demonstrates clean architecture with:
+- **Schema-first GraphQL** with gqlgen (single source of truth)
+- **Type-safe database operations** with EntGo ORM
+- **Repository pattern** with dependency injection
+- **Structured logging** with zerolog
+- **Comprehensive testing** (78.5% repository coverage)
+- **Automatic schema migrations**
+- **Legacy REST API** preserved in `internal/legacy/` for reference
 
-**Note:** The original REST API implementation has been moved to `internal/legacy/rest/` for reference and learning purposes.
+### Single Source of Truth Architecture
+
+**GraphQL Schema** (`internal/graph/schema.graphql`) is the **ONLY** source of truth:
+- Defines all types, queries, and mutations
+- gqlgen auto-generates Go types (`internal/graph/model/models_gen.go`)
+- Input types (CreateDepartmentInput, etc.) are auto-generated
+- Output types (Department, Employee) are auto-generated
+- **These generated types are used throughout the entire application** - in repositories, resolvers, and handlers
+- No separate domain models - GraphQL models serve all layers
+
+**Legacy REST DTOs** (`internal/legacy/models.go`) are isolated:
+- Only used for REST API request binding (CreateDepartmentRequest, etc.)
+- Legacy REST handlers also use GraphQL models for data operations
+- Kept for backward compatibility reference
 
 ## Commands
 
@@ -63,24 +83,25 @@ go test -cover ./...
 
 ## Architecture
 
-### Layered Architecture
-The application follows a clean architecture pattern with these layers:
+### Simplified Architecture
+The application uses GraphQL-generated models throughout all layers:
 
-1. **GraphQL Layer** (`internal/graph/`): GraphQL schema, resolvers, and generated code
-2. **Resolver Layer** (`internal/graph/schema.resolvers.go`): GraphQL query/mutation handling and validation
-3. **Repository Layer** (`internal/database/`): Repository interfaces and EntGo implementations
-4. **EntGo Layer** (`internal/ent/`): Generated type-safe database client
+1. **GraphQL Layer** (`internal/graph/`): Schema definition and auto-generated types
+2. **Resolver Layer** (`internal/graph/schema.resolvers.go`): Business logic and validation
+3. **Repository Layer** (`internal/database/`): Data access using GraphQL models
+4. **EntGo Layer** (`internal/ent/`): Type-safe database operations
 5. **Database Layer**: PostgreSQL with automatic schema management
 
 ### Dependency Flow
 ```
-cmd/graphql/main.go → EntGo Client → EntGo Repositories → GraphQL Resolvers → gqlgen Server
+GraphQL Schema → gqlgen (generates types) → Used by Resolvers & Repositories → EntGo Client → PostgreSQL
 ```
-- All dependencies are injected via constructors
-- Resolvers depend on repository interfaces, not concrete implementations
-- EntGo client provides type-safe database operations
-- gqlgen generates type-safe GraphQL execution code
-- Automatic database migrations on application startup
+- **Single type system**: GraphQL-generated models used everywhere
+- No conversion between layers - same types from API to database
+- All dependencies injected via constructors
+- Repositories work directly with `*model.Department` and `*model.Employee`
+- EntGo converts between GraphQL models and database entities
+- Automatic database migrations on startup
 
 ### GraphQL Architecture
 
@@ -258,21 +279,28 @@ cmd/
 ├── graphql/main.go                      - GraphQL server entry point
 └── legacy/rest_main.go                  - Legacy REST server (for reference)
 internal/
-├── config/config.go                     - Environment configuration loader
-├── models/models.go                     - Domain models
+├── config/config.go                     - Environment configuration (DB, server, logging)
+├── logger/logger.go                     - Structured logging with zerolog
+├── middleware/logging.go                - GraphQL logging middleware
+├── testutil/testutil.go                 - Test utilities and helpers
 ├── graph/                               - GraphQL layer
-│   ├── schema.graphql                   - GraphQL schema definition (EDIT THIS!)
+│   ├── schema.graphql                   - GraphQL schema (SINGLE SOURCE OF TRUTH - EDIT THIS!)
 │   ├── resolver.go                      - Resolver struct with dependency injection
 │   ├── schema.resolvers.go              - Resolver implementations (EDIT THIS!)
+│   ├── validation_test.go               - Email validation tests
 │   ├── generated.go                     - Generated GraphQL execution code (DO NOT EDIT!)
 │   └── model/
 │       ├── models_gen.go                - Generated GraphQL models (DO NOT EDIT!)
+│       │                                  These types are used EVERYWHERE in the app
 │       └── model.go                     - Custom GraphQL models (if needed)
 ├── database/
-│   ├── database.go                      - Repository interfaces
+│   ├── database.go                      - Repository interfaces & ErrNotFound
 │   ├── ent_client.go                    - EntGo client setup & migrations
-│   ├── ent_department_repo.go           - Department repository (EntGo)
-│   └── ent_employee_repo.go             - Employee repository (EntGo)
+│   ├── ent_department_repo.go           - Department repository (uses GraphQL models)
+│   ├── ent_department_repo_test.go      - Department repository tests (13 tests)
+│   ├── ent_employee_repo.go             - Employee repository (uses GraphQL models)
+│   ├── ent_employee_repo_test.go        - Employee repository tests (18 tests)
+│   └── legacy/                          - Legacy in-memory/postgres repositories
 ├── ent/                                 - EntGo generated code (DO NOT EDIT MANUALLY!)
 │   ├── schema/
 │   │   ├── department.go                - Department schema definition (EDIT THIS!)
@@ -280,11 +308,13 @@ internal/
 │   ├── client.go                        - Generated database client
 │   ├── department.go, department_*.go   - Generated department code
 │   ├── employee.go, employee_*.go       - Generated employee code
-│   └── ...                              - Other generated files
-└── legacy/rest/                         - Legacy REST API (for reference)
-    ├── department/handler.go            - REST department handlers
-    ├── employee/handler.go              - REST employee handlers
-    └── router/router.go                 - REST routing configuration
+│   └── ...                              - Other generated files (~20+ files)
+└── legacy/                              - Legacy code (for reference)
+    ├── models.go                        - Legacy REST Request DTOs (only for REST)
+    └── rest/                            - Legacy REST API implementation
+        ├── department/handler.go        - REST department handlers
+        ├── employee/handler.go          - REST employee handlers
+        └── router/router.go             - REST routing configuration
 ```
 
 ### Important Directories
@@ -305,19 +335,78 @@ internal/
 - **`internal/ent/`** (all files except `schema/`): Fully generated by EntGo - completely rewritten
 - **`internal/legacy/rest/`**: Old REST implementation kept for learning purposes
 
+## Testing
+
+The project has comprehensive testing infrastructure:
+
+### Test Coverage
+- **51 total tests** with **78.5% coverage** of repository layer
+- Repository tests: 31 tests (13 department + 18 employee)
+- Validation tests: 20 tests (email format validation)
+- Fast execution: ~1.5 seconds total
+
+### Running Tests
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with coverage
+go test ./... -cover
+
+# Run specific package tests
+go test ./internal/database -v
+go test ./internal/graph -v
+
+# Generate coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
+```
+
+### Test Utilities
+Use `internal/testutil` for creating test data:
+```go
+client := testutil.NewTestEntClient(t)  // In-memory SQLite
+dept := testutil.SeedTestDepartment(t, client, "Engineering")
+emp := testutil.SeedTestEmployee(t, client, "John", "john@example.com", dept.ID)
+```
+
+## Logging
+
+The project uses structured logging with zerolog:
+
+### Log Levels
+- `DEBUG`: Detailed operation traces (use `LOG_LEVEL=debug`)
+- `INFO`: Operation start/completion
+- `WARN`: Expected issues (e.g., "not found")
+- `ERROR`: System failures requiring attention
+
+### Configuration
+Set in `.env`:
+```bash
+LOG_LEVEL=info       # debug, info, warn, error
+LOG_PRETTY=true      # Pretty console output for development
+```
+
+### Request Tracing
+Every GraphQL operation gets a unique request ID:
+- Propagates through middleware → resolver → repository
+- Enables tracing in high-concurrency scenarios
+- Check logs with: `request_id` field
+
 ## Notes
 
+- **GraphQL models are used everywhere** - no separate domain models
 - Vietnamese comments in code explain architecture decisions
 - GraphQL server port configured via `GRAPHQL_PORT` environment variable (default: 8081)
 - Legacy REST server port configured via `SERVER_PORT` environment variable (default: 8080)
 - No authentication/authorization implemented yet
-- No test files exist yet - testing infrastructure needs to be set up
 - **IMPORTANT Code Generation**:
   - After modifying GraphQL schema: `go run github.com/99designs/gqlgen generate`
   - After modifying EntGo schema: `go generate ./internal/ent`
 - Database migrations happen automatically on application startup
 - Both gqlgen and EntGo use code generation (~3000+ lines generated total)
 - GraphQL Playground provides interactive API documentation and testing
+- `ErrNotFound` moved to `internal/database` package (used by all repositories)
 
 ## GraphQL Examples
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"gin-crud-api/internal/database"
-	"gin-crud-api/internal/models"
+	"gin-crud-api/internal/graph/model"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -32,7 +32,7 @@ func NewPostgresEmployeeRepository(db *PostgresDB) database.EmployeeRepository {
 
 // Department Repository Implementation
 
-func (r *PostgresDepartmentRepo) Save(dept *models.Department) error {
+func (r *PostgresDepartmentRepo) Save(dept *model.Department) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -47,24 +47,24 @@ func (r *PostgresDepartmentRepo) Save(dept *models.Department) error {
 	return nil
 }
 
-func (r *PostgresDepartmentRepo) FindByID(id string) (*models.Department, error) {
+func (r *PostgresDepartmentRepo) FindByID(id string) (*model.Department, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `SELECT id, name FROM departments WHERE id = $1`
 
-	var dept models.Department
+	var dept model.Department
 	err := r.pool.QueryRow(ctx, query, id).Scan(&dept.ID, &dept.Name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, models.ErrNotFound
+			return nil, database.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to find department: %w", err)
 	}
 	return &dept, nil
 }
 
-func (r *PostgresDepartmentRepo) FindAll() ([]*models.Department, error) {
+func (r *PostgresDepartmentRepo) FindAll() ([]*model.Department, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -76,9 +76,9 @@ func (r *PostgresDepartmentRepo) FindAll() ([]*models.Department, error) {
 	}
 	defer rows.Close()
 
-	var departments []*models.Department
+	var departments []*model.Department
 	for rows.Next() {
-		var dept models.Department
+		var dept model.Department
 		if err := rows.Scan(&dept.ID, &dept.Name); err != nil {
 			return nil, fmt.Errorf("failed to scan department: %w", err)
 		}
@@ -91,13 +91,13 @@ func (r *PostgresDepartmentRepo) FindAll() ([]*models.Department, error) {
 
 	// Return empty slice instead of nil to match in-memory behavior
 	if departments == nil {
-		departments = make([]*models.Department, 0)
+		departments = make([]*model.Department, 0)
 	}
 
 	return departments, nil
 }
 
-func (r *PostgresDepartmentRepo) Update(dept *models.Department) error {
+func (r *PostgresDepartmentRepo) Update(dept *model.Department) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -112,7 +112,7 @@ func (r *PostgresDepartmentRepo) Update(dept *models.Department) error {
 	}
 
 	if result.RowsAffected() == 0 {
-		return models.ErrNotFound
+		return database.ErrNotFound
 	}
 
 	return nil
@@ -131,7 +131,7 @@ func (r *PostgresDepartmentRepo) Delete(id string) error {
 	}
 
 	if result.RowsAffected() == 0 {
-		return models.ErrNotFound
+		return database.ErrNotFound
 	}
 
 	return nil
@@ -139,7 +139,7 @@ func (r *PostgresDepartmentRepo) Delete(id string) error {
 
 // Employee Repository Implementation
 
-func (r *PostgresEmployeeRepo) Save(emp *models.Employee) error {
+func (r *PostgresEmployeeRepo) Save(emp *model.Employee) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -154,7 +154,7 @@ func (r *PostgresEmployeeRepo) Save(emp *models.Employee) error {
 	return nil
 }
 
-func (r *PostgresEmployeeRepo) FindByID(id string) (*models.Employee, error) {
+func (r *PostgresEmployeeRepo) FindByID(id string) (*model.Employee, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -164,20 +164,20 @@ func (r *PostgresEmployeeRepo) FindByID(id string) (*models.Employee, error) {
 		WHERE id = $1
 	`
 
-	var emp models.Employee
+	var emp model.Employee
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&emp.ID, &emp.Name, &emp.Email, &emp.DepartmentID,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, models.ErrNotFound
+			return nil, database.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to find employee: %w", err)
 	}
 	return &emp, nil
 }
 
-func (r *PostgresEmployeeRepo) FindAll() ([]*models.Employee, error) {
+func (r *PostgresEmployeeRepo) FindAll() ([]*model.Employee, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -193,9 +193,9 @@ func (r *PostgresEmployeeRepo) FindAll() ([]*models.Employee, error) {
 	}
 	defer rows.Close()
 
-	var employees []*models.Employee
+	var employees []*model.Employee
 	for rows.Next() {
-		var emp models.Employee
+		var emp model.Employee
 		if err := rows.Scan(&emp.ID, &emp.Name, &emp.Email, &emp.DepartmentID); err != nil {
 			return nil, fmt.Errorf("failed to scan employee: %w", err)
 		}
@@ -208,13 +208,13 @@ func (r *PostgresEmployeeRepo) FindAll() ([]*models.Employee, error) {
 
 	// Return empty slice instead of nil to match in-memory behavior
 	if employees == nil {
-		employees = make([]*models.Employee, 0)
+		employees = make([]*model.Employee, 0)
 	}
 
 	return employees, nil
 }
 
-func (r *PostgresEmployeeRepo) Update(emp *models.Employee) error {
+func (r *PostgresEmployeeRepo) Update(emp *model.Employee) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -229,7 +229,7 @@ func (r *PostgresEmployeeRepo) Update(emp *models.Employee) error {
 	}
 
 	if result.RowsAffected() == 0 {
-		return models.ErrNotFound
+		return database.ErrNotFound
 	}
 
 	return nil
@@ -247,13 +247,13 @@ func (r *PostgresEmployeeRepo) Delete(id string) error {
 	}
 
 	if result.RowsAffected() == 0 {
-		return models.ErrNotFound
+		return database.ErrNotFound
 	}
 
 	return nil
 }
 
-func (r *PostgresEmployeeRepo) FindByDepartmentID(deptID string) ([]*models.Employee, error) {
+func (r *PostgresEmployeeRepo) FindByDepartmentID(deptID string) ([]*model.Employee, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -270,9 +270,9 @@ func (r *PostgresEmployeeRepo) FindByDepartmentID(deptID string) ([]*models.Empl
 	}
 	defer rows.Close()
 
-	var employees []*models.Employee
+	var employees []*model.Employee
 	for rows.Next() {
-		var emp models.Employee
+		var emp model.Employee
 		if err := rows.Scan(&emp.ID, &emp.Name, &emp.Email, &emp.DepartmentID); err != nil {
 			return nil, fmt.Errorf("failed to scan employee: %w", err)
 		}
@@ -285,7 +285,7 @@ func (r *PostgresEmployeeRepo) FindByDepartmentID(deptID string) ([]*models.Empl
 
 	// Return empty slice instead of nil
 	if employees == nil {
-		employees = make([]*models.Employee, 0)
+		employees = make([]*model.Employee, 0)
 	}
 
 	return employees, nil

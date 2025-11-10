@@ -8,10 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gin-crud-api/internal/database"
 	"gin-crud-api/internal/graph/model"
 	"gin-crud-api/internal/logger"
 	"gin-crud-api/internal/middleware"
-	"gin-crud-api/internal/models"
 	"regexp"
 
 	"github.com/google/uuid"
@@ -40,8 +40,8 @@ func (r *mutationResolver) CreateDepartment(ctx context.Context, input model.Cre
 		return nil, errors.New("department name is required")
 	}
 
-	// Create domain model
-	dept := &models.Department{
+	// Create GraphQL model
+	dept := &model.Department{
 		ID:   uuid.New().String(),
 		Name: input.Name,
 	}
@@ -62,11 +62,7 @@ func (r *mutationResolver) CreateDepartment(ctx context.Context, input model.Cre
 		Str("name", dept.Name).
 		Msg("Department created successfully")
 
-	// Convert to GraphQL model
-	return &model.Department{
-		ID:   dept.ID,
-		Name: dept.Name,
-	}, nil
+	return dept, nil
 }
 
 // UpdateDepartment is the resolver for the updateDepartment field.
@@ -93,7 +89,7 @@ func (r *mutationResolver) UpdateDepartment(ctx context.Context, id string, inpu
 	// Check if department exists
 	existing, err := r.DeptRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, database.ErrNotFound) {
 			log.Warn().
 				Str("operation", "updateDepartment").
 				Str("department_id", id).
@@ -108,7 +104,7 @@ func (r *mutationResolver) UpdateDepartment(ctx context.Context, id string, inpu
 		return nil, fmt.Errorf("failed to find department: %w", err)
 	}
 
-	// Update domain model
+	// Update GraphQL model
 	existing.Name = input.Name
 
 	// Save to repository
@@ -127,11 +123,7 @@ func (r *mutationResolver) UpdateDepartment(ctx context.Context, id string, inpu
 		Str("name", existing.Name).
 		Msg("Department updated successfully")
 
-	// Convert to GraphQL model
-	return &model.Department{
-		ID:   existing.ID,
-		Name: existing.Name,
-	}, nil
+	return existing, nil
 }
 
 // DeleteDepartment is the resolver for the deleteDepartment field.
@@ -148,7 +140,7 @@ func (r *mutationResolver) DeleteDepartment(ctx context.Context, id string) (boo
 	// Check if department exists
 	_, err := r.DeptRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, database.ErrNotFound) {
 			log.Warn().
 				Str("operation", "deleteDepartment").
 				Str("department_id", id).
@@ -258,7 +250,7 @@ func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.Creat
 	// Verify department exists
 	_, err := r.DeptRepo.FindByID(input.DepartmentID)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, database.ErrNotFound) {
 			log.Warn().
 				Str("operation", "createEmployee").
 				Str("department_id", input.DepartmentID).
@@ -273,8 +265,8 @@ func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.Creat
 		return nil, fmt.Errorf("failed to verify department: %w", err)
 	}
 
-	// Create domain model
-	emp := &models.Employee{
+	// Create GraphQL model
+	emp := &model.Employee{
 		ID:           uuid.New().String(),
 		Name:         input.Name,
 		Email:        input.Email,
@@ -299,7 +291,7 @@ func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.Creat
 		Str("department_id", emp.DepartmentID).
 		Msg("Employee created successfully")
 
-	// Convert to GraphQL model
+	
 	return &model.Employee{
 		ID:           emp.ID,
 		Name:         emp.Name,
@@ -356,7 +348,7 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 	// Check if employee exists
 	existing, err := r.EmpRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, database.ErrNotFound) {
 			log.Warn().
 				Str("operation", "updateEmployee").
 				Str("employee_id", id).
@@ -374,7 +366,7 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 	// Verify department exists
 	_, err = r.DeptRepo.FindByID(input.DepartmentID)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, database.ErrNotFound) {
 			log.Warn().
 				Str("operation", "updateEmployee").
 				Str("employee_id", id).
@@ -391,7 +383,7 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 		return nil, fmt.Errorf("failed to verify department: %w", err)
 	}
 
-	// Update domain model
+	// Update GraphQL model
 	existing.Name = input.Name
 	existing.Email = input.Email
 	existing.DepartmentID = input.DepartmentID
@@ -414,7 +406,7 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 		Str("department_id", existing.DepartmentID).
 		Msg("Employee updated successfully")
 
-	// Convert to GraphQL model
+	
 	return &model.Employee{
 		ID:           existing.ID,
 		Name:         existing.Name,
@@ -437,7 +429,7 @@ func (r *mutationResolver) DeleteEmployee(ctx context.Context, id string) (bool,
 	// Check if employee exists
 	_, err := r.EmpRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, database.ErrNotFound) {
 			log.Warn().
 				Str("operation", "deleteEmployee").
 				Str("employee_id", id).
@@ -487,7 +479,7 @@ func (r *queryResolver) Department(ctx context.Context, id string) (*model.Depar
 
 	dept, err := r.DeptRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, database.ErrNotFound) {
 			log.Debug().
 				Str("operation", "department").
 				Str("department_id", id).
@@ -533,7 +525,7 @@ func (r *queryResolver) Departments(ctx context.Context) ([]*model.Department, e
 		return nil, fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
-	// Convert to GraphQL models
+	
 	result := make([]*model.Department, len(depts))
 	for i, dept := range depts {
 		result[i] = &model.Department{
@@ -567,7 +559,7 @@ func (r *queryResolver) Employee(ctx context.Context, id string) (*model.Employe
 
 	emp, err := r.EmpRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, database.ErrNotFound) {
 			log.Debug().
 				Str("operation", "employee").
 				Str("employee_id", id).
@@ -615,7 +607,6 @@ func (r *queryResolver) Employees(ctx context.Context) ([]*model.Employee, error
 		return nil, fmt.Errorf("failed to fetch employees: %w", err)
 	}
 
-	// Convert to GraphQL models
 	result := make([]*model.Employee, len(emps))
 	for i, emp := range emps {
 		result[i] = &model.Employee{
@@ -655,7 +646,6 @@ func (r *queryResolver) EmployeesByDepartment(ctx context.Context, departmentID 
 		return nil, fmt.Errorf("failed to fetch employees by department: %w", err)
 	}
 
-	// Convert to GraphQL models
 	result := make([]*model.Employee, len(emps))
 	for i, emp := range emps {
 		result[i] = &model.Employee{

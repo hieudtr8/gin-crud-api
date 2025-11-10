@@ -1,28 +1,33 @@
 package database
 
 import (
-	"gin-crud-api/internal/models"
+	"fmt"
+
+	"gin-crud-api/internal/graph/model"
 )
 
 // Repository interfaces define the contract for data access
-// These interfaces allow swapping between different storage implementations
-// (e.g., in-memory, PostgreSQL, MongoDB, etc.) without changing handler code
+// These interfaces use GraphQL-generated models as the single source of truth
+// This simplifies the codebase by eliminating conversion layers
+
+// ErrNotFound is returned when a record is not found in the database
+var ErrNotFound = fmt.Errorf("record not found")
 
 // DepartmentRepository defines all operations for managing departments
 type DepartmentRepository interface {
-	Save(dept *models.Department) error
-	FindByID(id string) (*models.Department, error)
-	FindAll() ([]*models.Department, error)
-	Update(dept *models.Department) error
+	Save(dept *model.Department) error
+	FindByID(id string) (*model.Department, error)
+	FindAll() ([]*model.Department, error)
+	Update(dept *model.Department) error
 	Delete(id string) error
 }
 
 // EmployeeRepository defines all operations for managing employees
 type EmployeeRepository interface {
-	Save(emp *models.Employee) error
-	FindByID(id string) (*models.Employee, error)
-	FindAll() ([]*models.Employee, error)
-	Update(emp *models.Employee) error
+	Save(emp *model.Employee) error
+	FindByID(id string) (*model.Employee, error)
+	FindAll() ([]*model.Employee, error)
+	Update(emp *model.Employee) error
 	Delete(id string) error
-	FindByDepartmentID(deptID string) ([]*models.Employee, error)
+	FindByDepartmentID(deptID string) ([]*model.Employee, error)
 }

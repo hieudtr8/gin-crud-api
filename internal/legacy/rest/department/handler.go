@@ -2,7 +2,8 @@ package department
 
 import (
 	"gin-crud-api/internal/database"
-	"gin-crud-api/internal/models"
+	"gin-crud-api/internal/legacy"
+	"gin-crud-api/internal/graph/model"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -23,14 +24,14 @@ func NewHandler(repo database.DepartmentRepository, empRepo database.EmployeeRep
 
 // Create handles POST /departments
 func (h *Handler) Create(c *gin.Context) {
-	var req models.CreateDepartmentRequest
+	var req legacy.CreateDepartmentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	dept := &models.Department{
+	dept := &model.Department{
 		ID:   uuid.NewString(),
 		Name: req.Name,
 	}
@@ -63,7 +64,7 @@ func (h *Handler) List(c *gin.Context) {
 	}
 
 	if departments == nil {
-		departments = []*models.Department{}
+		departments = []*model.Department{}
 	}
 
 	c.JSON(http.StatusOK, departments)
@@ -79,7 +80,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	var req models.UpdateDepartmentRequest
+	var req legacy.UpdateDepartmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -107,7 +108,7 @@ func (h *Handler) Delete(c *gin.Context) {
 
 	// Cascade delete: find and delete all employees in this department
 	employees, err := h.empRepo.FindByDepartmentID(id)
-	if err != nil && err != models.ErrNotFound {
+	if err != nil && err != database.ErrNotFound {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check department employees"})
 		return
 	}
