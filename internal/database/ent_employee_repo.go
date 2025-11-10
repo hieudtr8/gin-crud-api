@@ -6,6 +6,7 @@ import (
 
 	"gin-crud-api/internal/ent"
 	"gin-crud-api/internal/ent/employee"
+	"gin-crud-api/internal/logger"
 	"gin-crud-api/internal/models"
 
 	"github.com/google/uuid"
@@ -24,15 +25,31 @@ func NewEntEmployeeRepo(client *ent.Client) EmployeeRepository {
 // Save creates a new employee in the database
 func (r *EntEmployeeRepo) Save(emp *models.Employee) error {
 	ctx := context.Background()
+	log := logger.WithComponent("EmployeeRepo")
+
+	log.Debug().
+		Str("employee_id", emp.ID).
+		Str("name", emp.Name).
+		Str("email", emp.Email).
+		Str("department_id", emp.DepartmentID).
+		Msg("Saving employee to database")
 
 	// Parse UUID strings
 	empID, err := uuid.Parse(emp.ID)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("employee_id", emp.ID).
+			Msg("Invalid employee ID format")
 		return fmt.Errorf("invalid employee ID: %w", err)
 	}
 
 	deptID, err := uuid.Parse(emp.DepartmentID)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("department_id", emp.DepartmentID).
+			Msg("Invalid department ID format")
 		return fmt.Errorf("invalid department ID: %w", err)
 	}
 
@@ -46,8 +63,17 @@ func (r *EntEmployeeRepo) Save(emp *models.Employee) error {
 		Save(ctx)
 
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("employee_id", emp.ID).
+			Msg("Failed to save employee to database")
 		return fmt.Errorf("failed to save employee: %w", err)
 	}
+
+	log.Debug().
+		Str("employee_id", emp.ID).
+		Str("name", emp.Name).
+		Msg("Employee saved successfully")
 
 	return nil
 }
@@ -55,10 +81,19 @@ func (r *EntEmployeeRepo) Save(emp *models.Employee) error {
 // FindByID retrieves an employee by their ID
 func (r *EntEmployeeRepo) FindByID(id string) (*models.Employee, error) {
 	ctx := context.Background()
+	log := logger.WithComponent("EmployeeRepo")
+
+	log.Debug().
+		Str("employee_id", id).
+		Msg("Finding employee by ID")
 
 	// Parse UUID string
 	uid, err := uuid.Parse(id)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("employee_id", id).
+			Msg("Invalid employee ID format")
 		return nil, fmt.Errorf("invalid employee ID: %w", err)
 	}
 
@@ -66,10 +101,22 @@ func (r *EntEmployeeRepo) FindByID(id string) (*models.Employee, error) {
 	entEmp, err := r.client.Employee.Get(ctx, uid)
 	if err != nil {
 		if ent.IsNotFound(err) {
+			log.Debug().
+				Str("employee_id", id).
+				Msg("Employee not found in database")
 			return nil, models.ErrNotFound
 		}
+		log.Error().
+			Err(err).
+			Str("employee_id", id).
+			Msg("Database error while finding employee")
 		return nil, fmt.Errorf("failed to find employee: %w", err)
 	}
+
+	log.Debug().
+		Str("employee_id", entEmp.ID.String()).
+		Str("name", entEmp.Name).
+		Msg("Employee found successfully")
 
 	// Convert EntGo entity to domain model
 	return &models.Employee{
@@ -83,10 +130,16 @@ func (r *EntEmployeeRepo) FindByID(id string) (*models.Employee, error) {
 // FindAll retrieves all employees from the database
 func (r *EntEmployeeRepo) FindAll() ([]*models.Employee, error) {
 	ctx := context.Background()
+	log := logger.WithComponent("EmployeeRepo")
+
+	log.Debug().Msg("Finding all employees")
 
 	// Query all employees
 	entEmps, err := r.client.Employee.Query().All(ctx)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("Database error while finding all employees")
 		return nil, fmt.Errorf("failed to find all employees: %w", err)
 	}
 
@@ -101,21 +154,41 @@ func (r *EntEmployeeRepo) FindAll() ([]*models.Employee, error) {
 		}
 	}
 
+	log.Debug().
+		Int("count", len(employees)).
+		Msg("All employees found successfully")
+
 	return employees, nil
 }
 
 // Update updates an existing employee
 func (r *EntEmployeeRepo) Update(emp *models.Employee) error {
 	ctx := context.Background()
+	log := logger.WithComponent("EmployeeRepo")
+
+	log.Debug().
+		Str("employee_id", emp.ID).
+		Str("name", emp.Name).
+		Str("email", emp.Email).
+		Str("department_id", emp.DepartmentID).
+		Msg("Updating employee")
 
 	// Parse UUID strings
 	empID, err := uuid.Parse(emp.ID)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("employee_id", emp.ID).
+			Msg("Invalid employee ID format")
 		return fmt.Errorf("invalid employee ID: %w", err)
 	}
 
 	deptID, err := uuid.Parse(emp.DepartmentID)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("department_id", emp.DepartmentID).
+			Msg("Invalid department ID format")
 		return fmt.Errorf("invalid department ID: %w", err)
 	}
 
@@ -129,10 +202,22 @@ func (r *EntEmployeeRepo) Update(emp *models.Employee) error {
 
 	if err != nil {
 		if ent.IsNotFound(err) {
+			log.Debug().
+				Str("employee_id", emp.ID).
+				Msg("Employee not found for update")
 			return models.ErrNotFound
 		}
+		log.Error().
+			Err(err).
+			Str("employee_id", emp.ID).
+			Msg("Database error while updating employee")
 		return fmt.Errorf("failed to update employee: %w", err)
 	}
+
+	log.Debug().
+		Str("employee_id", emp.ID).
+		Str("name", emp.Name).
+		Msg("Employee updated successfully")
 
 	return nil
 }
@@ -140,10 +225,19 @@ func (r *EntEmployeeRepo) Update(emp *models.Employee) error {
 // Delete removes an employee from the database
 func (r *EntEmployeeRepo) Delete(id string) error {
 	ctx := context.Background()
+	log := logger.WithComponent("EmployeeRepo")
+
+	log.Debug().
+		Str("employee_id", id).
+		Msg("Deleting employee")
 
 	// Parse UUID string
 	uid, err := uuid.Parse(id)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("employee_id", id).
+			Msg("Invalid employee ID format")
 		return fmt.Errorf("invalid employee ID: %w", err)
 	}
 
@@ -151,10 +245,21 @@ func (r *EntEmployeeRepo) Delete(id string) error {
 	err = r.client.Employee.DeleteOneID(uid).Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
+			log.Debug().
+				Str("employee_id", id).
+				Msg("Employee not found for deletion")
 			return models.ErrNotFound
 		}
+		log.Error().
+			Err(err).
+			Str("employee_id", id).
+			Msg("Database error while deleting employee")
 		return fmt.Errorf("failed to delete employee: %w", err)
 	}
+
+	log.Debug().
+		Str("employee_id", id).
+		Msg("Employee deleted successfully")
 
 	return nil
 }
@@ -162,10 +267,19 @@ func (r *EntEmployeeRepo) Delete(id string) error {
 // FindByDepartmentID retrieves all employees in a specific department
 func (r *EntEmployeeRepo) FindByDepartmentID(deptID string) ([]*models.Employee, error) {
 	ctx := context.Background()
+	log := logger.WithComponent("EmployeeRepo")
+
+	log.Debug().
+		Str("department_id", deptID).
+		Msg("Finding employees by department ID")
 
 	// Parse UUID string
 	uid, err := uuid.Parse(deptID)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("department_id", deptID).
+			Msg("Invalid department ID format")
 		return nil, fmt.Errorf("invalid department ID: %w", err)
 	}
 
@@ -176,6 +290,10 @@ func (r *EntEmployeeRepo) FindByDepartmentID(deptID string) ([]*models.Employee,
 		All(ctx)
 
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("department_id", deptID).
+			Msg("Database error while finding employees by department")
 		return nil, fmt.Errorf("failed to find employees by department: %w", err)
 	}
 
@@ -189,6 +307,11 @@ func (r *EntEmployeeRepo) FindByDepartmentID(deptID string) ([]*models.Employee,
 			DepartmentID: entEmp.DepartmentID.String(),
 		}
 	}
+
+	log.Debug().
+		Str("department_id", deptID).
+		Int("count", len(employees)).
+		Msg("Employees found by department successfully")
 
 	return employees, nil
 }

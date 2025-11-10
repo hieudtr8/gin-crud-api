@@ -1,9 +1,10 @@
-package database
+package legacy
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"gin-crud-api/internal/database"
 	"gin-crud-api/internal/models"
 	"time"
 
@@ -21,11 +22,11 @@ type PostgresEmployeeRepo struct {
 	pool *pgxpool.Pool
 }
 
-func NewPostgresDepartmentRepository(db *PostgresDB) DepartmentRepository {
+func NewPostgresDepartmentRepository(db *PostgresDB) database.DepartmentRepository {
 	return &PostgresDepartmentRepo{pool: db.Pool}
 }
 
-func NewPostgresEmployeeRepository(db *PostgresDB) EmployeeRepository {
+func NewPostgresEmployeeRepository(db *PostgresDB) database.EmployeeRepository {
 	return &PostgresEmployeeRepo{pool: db.Pool}
 }
 

@@ -1,6 +1,7 @@
-package database
+package legacy
 
 import (
+	"gin-crud-api/internal/database"
 	"gin-crud-api/internal/models"
 	"sync"
 )
@@ -29,11 +30,11 @@ type InMemoryEmployeeRepo struct {
 	store *InMemoryStore
 }
 
-func NewDepartmentRepository(store *InMemoryStore) DepartmentRepository {
+func NewDepartmentRepository(store *InMemoryStore) database.DepartmentRepository {
 	return &InMemoryDepartmentRepo{store: store}
 }
 
-func NewEmployeeRepository(store *InMemoryStore) EmployeeRepository {
+func NewEmployeeRepository(store *InMemoryStore) database.EmployeeRepository {
 	return &InMemoryEmployeeRepo{store: store}
 }
 

@@ -9,6 +9,7 @@ A clean architecture **GraphQL API** built with Go, gqlgen, and EntGo ORM for ty
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Development Guide](#development-guide)
+- [Testing](#testing)
 - [Key Concepts](#key-concepts)
 
 ## 🎯 Overview
@@ -496,6 +497,111 @@ DB_SSLMODE=disable
 DB_MAX_CONNS=25
 DB_MIN_CONNS=5
 ```
+
+## 🧪 Testing
+
+The project uses Go's standard `testing` package with testify for assertions and enttest for in-memory database testing.
+
+### Test Structure
+
+We have **51 total tests** with **78.5% coverage** of the repository layer:
+
+- **Repository Tests** (31 tests): Test all CRUD operations with real database (in-memory SQLite)
+- **Validation Tests** (20 tests): Test email format validation with various edge cases
+- **Integration Tests**: Use enttest with SQLite for fast, isolated testing
+
+### Running Tests
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with coverage
+go test ./... -cover
+
+# Run tests with detailed coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
+
+# Run specific package tests
+go test ./internal/database -v
+go test ./internal/graph -v
+
+# Run specific test
+go test ./internal/database -run TestEntDepartmentRepo_Save -v
+```
+
+### Test Coverage by Package
+
+```
+internal/database:  78.5% (repository layer - all CRUD operations)
+internal/graph:     0.3%  (validation function only)
+Total:              3.1%  (includes EntGo-generated code)
+```
+
+**Note**: The low total coverage is due to EntGo-generated code. Our **business logic (repositories) has 78.5% coverage**.
+
+### Test Utilities
+
+We provide test helpers in `internal/testutil/`:
+
+```go
+// Create in-memory test database
+client := testutil.NewTestEntClient(t)
+
+// Seed test data
+dept := testutil.SeedTestDepartment(t, client, "Engineering")
+emp := testutil.SeedTestEmployee(t, client, "John", "john@example.com", dept.ID)
+
+// Seed multiple records
+depts := testutil.SeedMultipleDepartments(t, client, []string{"Sales", "HR"})
+emps := testutil.SeedMultipleEmployees(t, client, deptID, 5)
+```
+
+### Writing Tests
+
+Example repository test:
+
+```go
+func TestEntDepartmentRepo_Save(t *testing.T) {
+    // Setup: Create in-memory database
+    client := testutil.NewTestEntClient(t)
+    defer client.Close()
+    repo := NewEntDepartmentRepo(client)
+
+    // Test: Save a department
+    dept := &models.Department{
+        ID:   uuid.New().String(),
+        Name: "Engineering",
+    }
+    err := repo.Save(dept)
+
+    // Assert: No error and department was saved
+    require.NoError(t, err)
+
+    // Verify: Can retrieve it
+    saved, err := repo.FindByID(dept.ID)
+    require.NoError(t, err)
+    assert.Equal(t, dept.Name, saved.Name)
+}
+```
+
+### Test Organization
+
+Tests follow Go conventions:
+- Test files: `*_test.go` alongside source files
+- Test functions: `Test*` with `*testing.T` parameter
+- Table-driven tests for validation with multiple inputs
+- Setup/teardown with `defer` for cleanup
+
+### Testing Best Practices Used
+
+1. **In-Memory Database**: Fast tests with real SQL operations using SQLite
+2. **Test Isolation**: Each test gets its own database instance
+3. **Seeding Helpers**: Reusable functions for creating test data
+4. **Table-Driven Tests**: Validation tests cover 20 different email formats
+5. **Clear Naming**: Test names describe what they're testing
+6. **Assertions**: Using testify for readable assertions
 
 ## 🔰 Key Concepts
 

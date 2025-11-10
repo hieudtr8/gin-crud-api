@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"gin-crud-api/internal/graph/model"
+	"gin-crud-api/internal/logger"
+	"gin-crud-api/internal/middleware"
 	"gin-crud-api/internal/models"
 	"regexp"
 
@@ -21,8 +23,20 @@ import (
 
 // CreateDepartment is the resolver for the createDepartment field.
 func (r *mutationResolver) CreateDepartment(ctx context.Context, input model.CreateDepartmentInput) (*model.Department, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "createDepartment").
+		Str("name", input.Name).
+		Msg("Creating department")
+
 	// Validate input
 	if input.Name == "" {
+		log.Error().
+			Str("operation", "createDepartment").
+			Msg("Validation failed: department name is required")
 		return nil, errors.New("department name is required")
 	}
 
@@ -34,8 +48,19 @@ func (r *mutationResolver) CreateDepartment(ctx context.Context, input model.Cre
 
 	// Save to repository
 	if err := r.DeptRepo.Save(dept); err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "createDepartment").
+			Str("department_id", dept.ID).
+			Msg("Failed to save department")
 		return nil, fmt.Errorf("failed to create department: %w", err)
 	}
+
+	log.Info().
+		Str("operation", "createDepartment").
+		Str("department_id", dept.ID).
+		Str("name", dept.Name).
+		Msg("Department created successfully")
 
 	// Convert to GraphQL model
 	return &model.Department{
@@ -46,8 +71,22 @@ func (r *mutationResolver) CreateDepartment(ctx context.Context, input model.Cre
 
 // UpdateDepartment is the resolver for the updateDepartment field.
 func (r *mutationResolver) UpdateDepartment(ctx context.Context, id string, input model.UpdateDepartmentInput) (*model.Department, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "updateDepartment").
+		Str("department_id", id).
+		Str("new_name", input.Name).
+		Msg("Updating department")
+
 	// Validate input
 	if input.Name == "" {
+		log.Error().
+			Str("operation", "updateDepartment").
+			Str("department_id", id).
+			Msg("Validation failed: department name is required")
 		return nil, errors.New("department name is required")
 	}
 
@@ -55,8 +94,17 @@ func (r *mutationResolver) UpdateDepartment(ctx context.Context, id string, inpu
 	existing, err := r.DeptRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			log.Warn().
+				Str("operation", "updateDepartment").
+				Str("department_id", id).
+				Msg("Department not found")
 			return nil, fmt.Errorf("department not found")
 		}
+		log.Error().
+			Err(err).
+			Str("operation", "updateDepartment").
+			Str("department_id", id).
+			Msg("Failed to find department")
 		return nil, fmt.Errorf("failed to find department: %w", err)
 	}
 
@@ -65,8 +113,19 @@ func (r *mutationResolver) UpdateDepartment(ctx context.Context, id string, inpu
 
 	// Save to repository
 	if err := r.DeptRepo.Update(existing); err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "updateDepartment").
+			Str("department_id", id).
+			Msg("Failed to update department")
 		return nil, fmt.Errorf("failed to update department: %w", err)
 	}
+
+	log.Info().
+		Str("operation", "updateDepartment").
+		Str("department_id", existing.ID).
+		Str("name", existing.Name).
+		Msg("Department updated successfully")
 
 	// Convert to GraphQL model
 	return &model.Department{
@@ -77,31 +136,77 @@ func (r *mutationResolver) UpdateDepartment(ctx context.Context, id string, inpu
 
 // DeleteDepartment is the resolver for the deleteDepartment field.
 func (r *mutationResolver) DeleteDepartment(ctx context.Context, id string) (bool, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "deleteDepartment").
+		Str("department_id", id).
+		Msg("Deleting department with cascade")
+
 	// Check if department exists
 	_, err := r.DeptRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			log.Warn().
+				Str("operation", "deleteDepartment").
+				Str("department_id", id).
+				Msg("Department not found")
 			return false, fmt.Errorf("department not found")
 		}
+		log.Error().
+			Err(err).
+			Str("operation", "deleteDepartment").
+			Str("department_id", id).
+			Msg("Failed to find department")
 		return false, fmt.Errorf("failed to find department: %w", err)
 	}
 
 	// Cascade delete: delete all employees in this department
 	employees, err := r.EmpRepo.FindByDepartmentID(id)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "deleteDepartment").
+			Str("department_id", id).
+			Msg("Failed to find employees for cascade delete")
 		return false, fmt.Errorf("failed to find employees: %w", err)
 	}
 
+	log.Info().
+		Str("operation", "deleteDepartment").
+		Str("department_id", id).
+		Int("employee_count", len(employees)).
+		Msg("Cascade deleting employees")
+
 	for _, emp := range employees {
 		if err := r.EmpRepo.Delete(emp.ID); err != nil {
+			log.Error().
+				Err(err).
+				Str("operation", "deleteDepartment").
+				Str("department_id", id).
+				Str("employee_id", emp.ID).
+				Msg("Failed to delete employee during cascade")
 			return false, fmt.Errorf("failed to delete employee %s: %w", emp.ID, err)
 		}
 	}
 
 	// Delete the department
 	if err := r.DeptRepo.Delete(id); err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "deleteDepartment").
+			Str("department_id", id).
+			Msg("Failed to delete department")
 		return false, fmt.Errorf("failed to delete department: %w", err)
 	}
+
+	log.Info().
+		Str("operation", "deleteDepartment").
+		Str("department_id", id).
+		Int("employees_deleted", len(employees)).
+		Msg("Department and employees deleted successfully")
 
 	return true, nil
 }
@@ -112,17 +217,41 @@ func (r *mutationResolver) DeleteDepartment(ctx context.Context, id string) (boo
 
 // CreateEmployee is the resolver for the createEmployee field.
 func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.CreateEmployeeInput) (*model.Employee, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "createEmployee").
+		Str("name", input.Name).
+		Str("email", input.Email).
+		Str("department_id", input.DepartmentID).
+		Msg("Creating employee")
+
 	// Validate input
 	if input.Name == "" {
+		log.Error().
+			Str("operation", "createEmployee").
+			Msg("Validation failed: employee name is required")
 		return nil, errors.New("employee name is required")
 	}
 	if input.Email == "" {
+		log.Error().
+			Str("operation", "createEmployee").
+			Msg("Validation failed: employee email is required")
 		return nil, errors.New("employee email is required")
 	}
 	if !isValidEmail(input.Email) {
+		log.Error().
+			Str("operation", "createEmployee").
+			Str("email", input.Email).
+			Msg("Validation failed: invalid email format")
 		return nil, errors.New("invalid email format")
 	}
 	if input.DepartmentID == "" {
+		log.Error().
+			Str("operation", "createEmployee").
+			Msg("Validation failed: department ID is required")
 		return nil, errors.New("department ID is required")
 	}
 
@@ -130,8 +259,17 @@ func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.Creat
 	_, err := r.DeptRepo.FindByID(input.DepartmentID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			log.Warn().
+				Str("operation", "createEmployee").
+				Str("department_id", input.DepartmentID).
+				Msg("Department not found")
 			return nil, fmt.Errorf("department not found")
 		}
+		log.Error().
+			Err(err).
+			Str("operation", "createEmployee").
+			Str("department_id", input.DepartmentID).
+			Msg("Failed to verify department")
 		return nil, fmt.Errorf("failed to verify department: %w", err)
 	}
 
@@ -145,8 +283,21 @@ func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.Creat
 
 	// Save to repository
 	if err := r.EmpRepo.Save(emp); err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "createEmployee").
+			Str("employee_id", emp.ID).
+			Msg("Failed to save employee")
 		return nil, fmt.Errorf("failed to create employee: %w", err)
 	}
+
+	log.Info().
+		Str("operation", "createEmployee").
+		Str("employee_id", emp.ID).
+		Str("name", emp.Name).
+		Str("email", emp.Email).
+		Str("department_id", emp.DepartmentID).
+		Msg("Employee created successfully")
 
 	// Convert to GraphQL model
 	return &model.Employee{
@@ -159,17 +310,46 @@ func (r *mutationResolver) CreateEmployee(ctx context.Context, input model.Creat
 
 // UpdateEmployee is the resolver for the updateEmployee field.
 func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input model.UpdateEmployeeInput) (*model.Employee, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "updateEmployee").
+		Str("employee_id", id).
+		Str("new_name", input.Name).
+		Str("new_email", input.Email).
+		Str("new_department_id", input.DepartmentID).
+		Msg("Updating employee")
+
 	// Validate input
 	if input.Name == "" {
+		log.Error().
+			Str("operation", "updateEmployee").
+			Str("employee_id", id).
+			Msg("Validation failed: employee name is required")
 		return nil, errors.New("employee name is required")
 	}
 	if input.Email == "" {
+		log.Error().
+			Str("operation", "updateEmployee").
+			Str("employee_id", id).
+			Msg("Validation failed: employee email is required")
 		return nil, errors.New("employee email is required")
 	}
 	if !isValidEmail(input.Email) {
+		log.Error().
+			Str("operation", "updateEmployee").
+			Str("employee_id", id).
+			Str("email", input.Email).
+			Msg("Validation failed: invalid email format")
 		return nil, errors.New("invalid email format")
 	}
 	if input.DepartmentID == "" {
+		log.Error().
+			Str("operation", "updateEmployee").
+			Str("employee_id", id).
+			Msg("Validation failed: department ID is required")
 		return nil, errors.New("department ID is required")
 	}
 
@@ -177,8 +357,17 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 	existing, err := r.EmpRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			log.Warn().
+				Str("operation", "updateEmployee").
+				Str("employee_id", id).
+				Msg("Employee not found")
 			return nil, fmt.Errorf("employee not found")
 		}
+		log.Error().
+			Err(err).
+			Str("operation", "updateEmployee").
+			Str("employee_id", id).
+			Msg("Failed to find employee")
 		return nil, fmt.Errorf("failed to find employee: %w", err)
 	}
 
@@ -186,8 +375,19 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 	_, err = r.DeptRepo.FindByID(input.DepartmentID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			log.Warn().
+				Str("operation", "updateEmployee").
+				Str("employee_id", id).
+				Str("department_id", input.DepartmentID).
+				Msg("Department not found")
 			return nil, fmt.Errorf("department not found")
 		}
+		log.Error().
+			Err(err).
+			Str("operation", "updateEmployee").
+			Str("employee_id", id).
+			Str("department_id", input.DepartmentID).
+			Msg("Failed to verify department")
 		return nil, fmt.Errorf("failed to verify department: %w", err)
 	}
 
@@ -198,8 +398,21 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 
 	// Save to repository
 	if err := r.EmpRepo.Update(existing); err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "updateEmployee").
+			Str("employee_id", id).
+			Msg("Failed to update employee")
 		return nil, fmt.Errorf("failed to update employee: %w", err)
 	}
+
+	log.Info().
+		Str("operation", "updateEmployee").
+		Str("employee_id", existing.ID).
+		Str("name", existing.Name).
+		Str("email", existing.Email).
+		Str("department_id", existing.DepartmentID).
+		Msg("Employee updated successfully")
 
 	// Convert to GraphQL model
 	return &model.Employee{
@@ -212,19 +425,47 @@ func (r *mutationResolver) UpdateEmployee(ctx context.Context, id string, input 
 
 // DeleteEmployee is the resolver for the deleteEmployee field.
 func (r *mutationResolver) DeleteEmployee(ctx context.Context, id string) (bool, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "deleteEmployee").
+		Str("employee_id", id).
+		Msg("Deleting employee")
+
 	// Check if employee exists
 	_, err := r.EmpRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			log.Warn().
+				Str("operation", "deleteEmployee").
+				Str("employee_id", id).
+				Msg("Employee not found")
 			return false, fmt.Errorf("employee not found")
 		}
+		log.Error().
+			Err(err).
+			Str("operation", "deleteEmployee").
+			Str("employee_id", id).
+			Msg("Failed to find employee")
 		return false, fmt.Errorf("failed to find employee: %w", err)
 	}
 
 	// Delete the employee
 	if err := r.EmpRepo.Delete(id); err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "deleteEmployee").
+			Str("employee_id", id).
+			Msg("Failed to delete employee")
 		return false, fmt.Errorf("failed to delete employee: %w", err)
 	}
+
+	log.Info().
+		Str("operation", "deleteEmployee").
+		Str("employee_id", id).
+		Msg("Employee deleted successfully")
 
 	return true, nil
 }
@@ -235,13 +476,37 @@ func (r *mutationResolver) DeleteEmployee(ctx context.Context, id string) (bool,
 
 // Department is the resolver for the department field.
 func (r *queryResolver) Department(ctx context.Context, id string) (*model.Department, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "department").
+		Str("department_id", id).
+		Msg("Fetching department")
+
 	dept, err := r.DeptRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			log.Debug().
+				Str("operation", "department").
+				Str("department_id", id).
+				Msg("Department not found")
 			return nil, nil // GraphQL convention: return nil for not found
 		}
+		log.Error().
+			Err(err).
+			Str("operation", "department").
+			Str("department_id", id).
+			Msg("Failed to find department")
 		return nil, fmt.Errorf("failed to find department: %w", err)
 	}
+
+	log.Debug().
+		Str("operation", "department").
+		Str("department_id", dept.ID).
+		Str("name", dept.Name).
+		Msg("Department found")
 
 	return &model.Department{
 		ID:   dept.ID,
@@ -251,8 +516,20 @@ func (r *queryResolver) Department(ctx context.Context, id string) (*model.Depar
 
 // Departments is the resolver for the departments field.
 func (r *queryResolver) Departments(ctx context.Context) ([]*model.Department, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "departments").
+		Msg("Fetching all departments")
+
 	depts, err := r.DeptRepo.FindAll()
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "departments").
+			Msg("Failed to fetch departments")
 		return nil, fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
@@ -265,6 +542,11 @@ func (r *queryResolver) Departments(ctx context.Context) ([]*model.Department, e
 		}
 	}
 
+	log.Debug().
+		Str("operation", "departments").
+		Int("count", len(result)).
+		Msg("Departments fetched successfully")
+
 	return result, nil
 }
 
@@ -274,13 +556,37 @@ func (r *queryResolver) Departments(ctx context.Context) ([]*model.Department, e
 
 // Employee is the resolver for the employee field.
 func (r *queryResolver) Employee(ctx context.Context, id string) (*model.Employee, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "employee").
+		Str("employee_id", id).
+		Msg("Fetching employee")
+
 	emp, err := r.EmpRepo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
+			log.Debug().
+				Str("operation", "employee").
+				Str("employee_id", id).
+				Msg("Employee not found")
 			return nil, nil // GraphQL convention: return nil for not found
 		}
+		log.Error().
+			Err(err).
+			Str("operation", "employee").
+			Str("employee_id", id).
+			Msg("Failed to find employee")
 		return nil, fmt.Errorf("failed to find employee: %w", err)
 	}
+
+	log.Debug().
+		Str("operation", "employee").
+		Str("employee_id", emp.ID).
+		Str("name", emp.Name).
+		Msg("Employee found")
 
 	return &model.Employee{
 		ID:           emp.ID,
@@ -292,8 +598,20 @@ func (r *queryResolver) Employee(ctx context.Context, id string) (*model.Employe
 
 // Employees is the resolver for the employees field.
 func (r *queryResolver) Employees(ctx context.Context) ([]*model.Employee, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "employees").
+		Msg("Fetching all employees")
+
 	emps, err := r.EmpRepo.FindAll()
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "employees").
+			Msg("Failed to fetch employees")
 		return nil, fmt.Errorf("failed to fetch employees: %w", err)
 	}
 
@@ -308,13 +626,32 @@ func (r *queryResolver) Employees(ctx context.Context) ([]*model.Employee, error
 		}
 	}
 
+	log.Debug().
+		Str("operation", "employees").
+		Int("count", len(result)).
+		Msg("Employees fetched successfully")
+
 	return result, nil
 }
 
 // EmployeesByDepartment is the resolver for the employeesByDepartment field.
 func (r *queryResolver) EmployeesByDepartment(ctx context.Context, departmentID string) ([]*model.Employee, error) {
+	// Get logger with request ID
+	requestID := middleware.GetRequestID(ctx)
+	log := logger.WithRequestID(requestID)
+
+	log.Info().
+		Str("operation", "employeesByDepartment").
+		Str("department_id", departmentID).
+		Msg("Fetching employees by department")
+
 	emps, err := r.EmpRepo.FindByDepartmentID(departmentID)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("operation", "employeesByDepartment").
+			Str("department_id", departmentID).
+			Msg("Failed to fetch employees by department")
 		return nil, fmt.Errorf("failed to fetch employees by department: %w", err)
 	}
 
@@ -328,6 +665,12 @@ func (r *queryResolver) EmployeesByDepartment(ctx context.Context, departmentID 
 			DepartmentID: emp.DepartmentID,
 		}
 	}
+
+	log.Debug().
+		Str("operation", "employeesByDepartment").
+		Str("department_id", departmentID).
+		Int("count", len(result)).
+		Msg("Employees fetched successfully")
 
 	return result, nil
 }

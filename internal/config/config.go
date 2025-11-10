@@ -18,15 +18,19 @@ type DatabaseConfig struct {
 }
 
 type Config struct {
-	Database DatabaseConfig
-	Port     string
-	Storage  string // "memory" or "postgres"
+	Database  DatabaseConfig
+	Port      string
+	LogLevel  string // "debug", "info", "warn", "error"
+	LogPretty bool   // Pretty logging for development
 }
 
 func Load() (*Config, error) {
 	port, _ := strconv.Atoi(getEnv("DB_PORT", "5432"))
 	maxConns, _ := strconv.Atoi(getEnv("DB_MAX_CONNS", "25"))
 	minConns, _ := strconv.Atoi(getEnv("DB_MIN_CONNS", "5"))
+
+	// Parse log pretty (default: true for development)
+	logPretty := getEnv("LOG_PRETTY", "true") == "true"
 
 	return &Config{
 		Database: DatabaseConfig{
@@ -39,8 +43,9 @@ func Load() (*Config, error) {
 			MaxConns: maxConns,
 			MinConns: minConns,
 		},
-		Port:    getEnv("SERVER_PORT", "8080"),
-		Storage: getEnv("STORAGE_TYPE", "memory"),
+		Port:      getEnv("SERVER_PORT", "8080"),
+		LogLevel:  getEnv("LOG_LEVEL", "info"),
+		LogPretty: logPretty,
 	}, nil
 }
 
