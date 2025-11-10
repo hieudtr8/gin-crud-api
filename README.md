@@ -338,7 +338,7 @@ extend type Mutation {
 
 2. **Create EntGo Schema**:
 ```bash
-go run entgo.io/ent/cmd/ent new --target internal/ent/schema Project
+go run entgo.io/ent/cmd/ent@latest new --target internal/ent/schema Project 
 ```
 
 3. **Regenerate**:
