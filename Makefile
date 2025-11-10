@@ -15,7 +15,6 @@ NC := \033[0m # No Color
 ##@ General
 
 help: ## Show this help message
-	@echo '$(BLUE)Available commands:$(NC)'
 	@awk 'BEGIN {FS = ":.*##"; printf "\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  $(GREEN)%-18s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ##@ Development
