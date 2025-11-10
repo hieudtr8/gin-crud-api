@@ -50,17 +50,31 @@ Department (1) ──────→ (many) Employee
 
 **Note**: Timestamps are automatically managed by EntGo
 
+## ⚡ Quick Command Reference
+
+```bash
+# Most common commands
+make setup       # First time setup (PostgreSQL + dependencies)
+make api         # Run GraphQL server (dev mode)
+make test        # Run all tests
+make generate    # Regenerate code after schema changes
+make help        # Show all available commands
+```
+
+For detailed commands, see the [Development Guide](#-development-guide) section.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Go 1.24.3+ installed
 - Docker (for PostgreSQL)
+- Make (usually pre-installed on macOS/Linux)
 - Web browser (for GraphQL Playground)
 
 ### 1. Clone and Install
 ```bash
 cd gin-crud-api
-go mod download
+make deps
 ```
 
 ### 2. Configure Environment
@@ -81,21 +95,30 @@ GRAPHQL_PORT=8081
 ### 3. Start PostgreSQL
 
 ```bash
-# Start PostgreSQL with Docker
-docker-compose up -d
+make docker-up
+```
 
-# Or use docker run
+<details>
+<summary>Alternative: Manual Docker Setup</summary>
+
+```bash
 docker run --name postgres-gin \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=gin_crud_api \
   -p 5432:5432 \
   -d postgres:15-alpine
 ```
+</details>
 
 ### 4. Run the GraphQL Server
 
 ```bash
-go run ./cmd/graphql
+make api
+```
+
+Or use the alias:
+```bash
+make dev
 ```
 
 You should see:
@@ -382,25 +405,51 @@ docker-compose.yml               # PostgreSQL setup
 
 ## 🛠 Development Guide
 
-### Common Commands
+### Quick Command Reference
 
 ```bash
 # Development
-go run ./cmd/graphql                    # Run GraphQL server
-go mod download                         # Download dependencies
-go mod tidy                             # Tidy dependencies
+make api              # Run GraphQL server (dev mode)
+make dev              # Alias for 'make api'
+make legacy           # Run legacy REST server (reference)
 
 # Code Generation
-go generate ./internal/ent              # Regenerate EntGo code after DB schema changes
-go run github.com/99designs/gqlgen generate  # Regenerate GraphQL code after schema changes
+make generate         # Regenerate all code (EntGo + GraphQL)
+make generate-ent     # Regenerate EntGo database code only
+make generate-graphql # Regenerate GraphQL code only
 
-# Docker
-docker-compose up -d                    # Start PostgreSQL
-docker-compose down                     # Stop PostgreSQL
+# Docker & Database
+make docker-up        # Start PostgreSQL
+make docker-down      # Stop PostgreSQL
+make docker-logs      # Show PostgreSQL logs
+
+# Testing
+make test             # Run all tests
+make test-coverage    # Run tests with coverage
+make test-db          # Run database tests only
+make test-graph       # Run GraphQL tests only
 
 # Build
-go build -o ./build/graphql-server ./cmd/graphql  # Build for production
-./build/graphql-server                  # Run the binary
+make build            # Build GraphQL server for production
+make build-legacy     # Build legacy REST server
+
+# Code Quality
+make format           # Format Go code
+make vet              # Run go vet
+make tidy             # Tidy go modules
+
+# Utilities
+make clean            # Remove build artifacts
+make clean-all        # Stop containers + remove artifacts
+make setup            # Setup dev environment (PostgreSQL + deps)
+make help             # Show all available commands
+```
+
+### First Time Setup
+
+```bash
+make setup            # Starts PostgreSQL + downloads dependencies
+make api              # Run the server
 ```
 
 ### Adding a New Field to GraphQL Type
@@ -431,8 +480,7 @@ go build -o ./build/graphql-server ./cmd/graphql  # Build for production
 
 3. **Regenerate Code**:
    ```bash
-   go generate ./internal/ent
-   go run github.com/99designs/gqlgen generate
+   make generate
    ```
 
 4. **Update Repository** (`internal/database/ent_employee_repo.go`):
@@ -441,7 +489,11 @@ go build -o ./build/graphql-server ./cmd/graphql  # Build for production
    SetPhone(emp.Phone)  // In Save and Update methods
    ```
 
-5. **Restart Application** - EntGo auto-migrates the new column!
+5. **Restart Application**:
+   ```bash
+   make api
+   ```
+   EntGo auto-migrates the new column on startup!
 
 
 ### Adding a New GraphQL Type/Entity
@@ -478,8 +530,7 @@ go build -o ./build/graphql-server ./cmd/graphql  # Build for production
 
 4. **Regenerate Code**:
    ```bash
-   go generate ./internal/ent
-   go run github.com/99designs/gqlgen generate
+   make generate
    ```
 
 5. **Create Repository Interface** in `internal/database/database.go`:
@@ -538,20 +589,19 @@ We have **51 total tests** with **78.5% coverage** of the repository layer:
 
 ```bash
 # Run all tests
-go test ./...
+make test
 
 # Run tests with coverage
-go test ./... -cover
+make test-coverage
 
-# Run tests with detailed coverage report
-go test ./... -coverprofile=coverage.out
-go tool cover -html=coverage.out
+# Generate HTML coverage report
+make test-coverage-html
 
 # Run specific package tests
-go test ./internal/database -v
-go test ./internal/graph -v
+make test-db          # Database repository tests
+make test-graph       # GraphQL resolver tests
 
-# Run specific test
+# Run specific test (use go test directly)
 go test ./internal/database -run TestEntDepartmentRepo_Save -v
 ```
 
@@ -652,7 +702,7 @@ type Mutation {
 }
 ```
 
-Then run: `go run github.com/99designs/gqlgen generate`
+Then run: `make generate-graphql`
 
 ### 2. Type-Safe Resolvers
 
@@ -744,7 +794,7 @@ func (Department) Fields() []ent.Field {
 // - CRUD methods
 ```
 
-After changing schemas, run: `go generate ./internal/ent`
+After changing schemas, run: `make generate-ent`
 
 ## 🚨 Important Notes
 

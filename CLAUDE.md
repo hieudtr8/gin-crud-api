@@ -30,55 +30,74 @@ This is a **GraphQL API** built with Go, gqlgen, and EntGo ORM for managing Depa
 
 ## Commands
 
-### Build and Run GraphQL Server
+All commands are available via Makefile for convenience. Run `make help` to see all available commands.
+
+### Quick Start
 ```bash
-# Run the GraphQL server (starts on port 8081)
-go run ./cmd/graphql
-
-# Build the GraphQL server
-go build -o ./build/graphql-server ./cmd/graphql
-
-# Run the built server
-./build/graphql-server
+# First time setup
+make setup            # Start PostgreSQL + download dependencies
+make api              # Run GraphQL server (dev mode)
 
 # Access GraphQL Playground
 # Open http://localhost:8081 in your browser
 ```
 
-### Run Legacy REST API (Optional)
-```bash
-# Run the legacy REST server (starts on port 8080)
-go run ./cmd/legacy/rest_main.go
-```
-
 ### Development
 ```bash
-# Download dependencies
-go mod download
+# Run servers
+make api              # Run GraphQL server (primary)
+make dev              # Alias for 'make api'
+make legacy           # Run legacy REST server (reference)
 
-# Tidy dependencies
-go mod tidy
+# Code generation
+make generate         # Regenerate all code (EntGo + GraphQL)
+make generate-ent     # Regenerate EntGo code only
+make generate-graphql # Regenerate GraphQL code only
 
-# Format code
-go fmt ./...
+# Code quality
+make format           # Format Go code
+make vet              # Run go vet
+make tidy             # Tidy go modules
+```
 
-# Vet code
-go vet ./...
+### Building
+```bash
+# Build for production
+make build            # Build GraphQL server → ./build/graphql-server
+make build-legacy     # Build legacy REST server → ./build/rest-server
 
-# Regenerate EntGo code (after database schema changes)
-go generate ./internal/ent
-
-# Regenerate GraphQL code (after GraphQL schema changes)
-go run github.com/99designs/gqlgen generate
+# Run built binary
+./build/graphql-server
 ```
 
 ### Testing
 ```bash
-# Run tests (currently no tests exist)
-go test ./...
+# Run tests
+make test             # Run all tests
+make test-coverage    # Run tests with coverage
+make test-db          # Run database repository tests only
+make test-graph       # Run GraphQL resolver tests only
+```
 
-# Run tests with coverage
-go test -cover ./...
+### Docker & Database
+```bash
+# PostgreSQL management
+make docker-up        # Start PostgreSQL with Docker Compose
+make docker-down      # Stop PostgreSQL
+make docker-logs      # Show PostgreSQL logs
+```
+
+### Utilities
+```bash
+# Cleanup
+make clean            # Remove build artifacts
+make clean-all        # Stop containers + remove all artifacts
+
+# Dependencies
+make deps             # Download Go dependencies
+
+# Help
+make help             # Show all available commands
 ```
 
 ## Architecture
@@ -203,8 +222,7 @@ Uses PostgreSQL with EntGo ORM:
 
 3. **Regenerate Code**:
    ```bash
-   go generate ./internal/ent
-   go run github.com/99designs/gqlgen generate
+   make generate
    ```
 
 4. **Update Resolvers** (`internal/graph/schema.resolvers.go`):
@@ -246,8 +264,7 @@ Uses PostgreSQL with EntGo ORM:
 
 4. **Regenerate Code**:
    ```bash
-   go generate ./internal/ent
-   go run github.com/99designs/gqlgen generate
+   make generate
    ```
 
 5. **Create Repository Interface** in `internal/database/database.go`
@@ -259,12 +276,13 @@ Uses PostgreSQL with EntGo ORM:
 8. **Implement Resolvers** in `internal/graph/schema.resolvers.go`
 
 ### Modifying GraphQL Schema
-- After ANY schema change, ALWAYS run: `go run github.com/99designs/gqlgen generate`
+- After ANY schema change, ALWAYS run: `make generate-graphql`
 - gqlgen updates generated code and resolver stubs
 - Your resolver implementations are preserved during regeneration
 
 ### Modifying EntGo Schema
-- After ANY EntGo schema change, ALWAYS run: `go generate ./internal/ent`
+- After ANY EntGo schema change, ALWAYS run: `make generate-ent`
+- Or run `make generate` to regenerate both GraphQL and EntGo code
 - Changes are applied automatically on next app restart
 - EntGo compares schema to database and applies diffs
 
@@ -401,8 +419,9 @@ Every GraphQL operation gets a unique request ID:
 - Legacy REST server port configured via `SERVER_PORT` environment variable (default: 8080)
 - No authentication/authorization implemented yet
 - **IMPORTANT Code Generation**:
-  - After modifying GraphQL schema: `go run github.com/99designs/gqlgen generate`
-  - After modifying EntGo schema: `go generate ./internal/ent`
+  - After modifying GraphQL schema: `make generate-graphql`
+  - After modifying EntGo schema: `make generate-ent`
+  - Or regenerate both: `make generate`
 - Database migrations happen automatically on application startup
 - Both gqlgen and EntGo use code generation (~3000+ lines generated total)
 - GraphQL Playground provides interactive API documentation and testing
