@@ -1,0 +1,135 @@
+# GraphQL Schema for Gin CRUD API
+# Defines all types, queries, and mutations for Department and Employee management
+
+# ============================================================================
+# Types - Core domain models
+# ============================================================================
+
+"""
+Department represents an organizational department.
+Each department can have multiple employees.
+"""
+type Department {
+  """Unique identifier (UUID)"""
+  id: ID!
+
+  """Department name"""
+  name: String!
+
+  """List of employees in this department"""
+  employees: [Employee!]
+}
+
+"""
+Employee represents a person working in a department.
+Each employee must belong to exactly one department.
+"""
+type Employee {
+  """Unique identifier (UUID)"""
+  id: ID!
+
+  """Employee full name"""
+  name: String!
+
+  """Employee email address (must be unique)"""
+  email: String!
+
+  """ID of the department this employee belongs to"""
+  departmentID: ID!
+
+  """The department this employee belongs to"""
+  department: Department
+}
+
+# ============================================================================
+# Input Types - For mutations
+# ============================================================================
+
+"""Input for creating a new department"""
+input CreateDepartmentInput {
+  """Department name (required)"""
+  name: String!
+}
+
+"""Input for updating an existing department"""
+input UpdateDepartmentInput {
+  """Department name (required)"""
+  name: String!
+}
+
+"""Input for creating a new employee"""
+input CreateEmployeeInput {
+  """Employee full name (required)"""
+  name: String!
+
+  """Employee email address (required, must be unique and valid email format)"""
+  email: String!
+
+  """ID of the department (required, must reference an existing department)"""
+  departmentID: ID!
+}
+
+"""Input for updating an existing employee"""
+input UpdateEmployeeInput {
+  """Employee full name (required)"""
+  name: String!
+
+  """Employee email address (required, must be unique and valid email format)"""
+  email: String!
+
+  """ID of the department (required, must reference an existing department)"""
+  departmentID: ID!
+}
+
+# ============================================================================
+# Queries - Read operations
+# ============================================================================
+
+type Query {
+  """Get a single department by ID"""
+  department(id: ID!): Department
+
+  """Get all departments"""
+  departments: [Department!]!
+
+  """Get a single employee by ID"""
+  employee(id: ID!): Employee
+
+  """Get all employees"""
+  employees: [Employee!]!
+
+  """Get all employees in a specific department"""
+  employeesByDepartment(departmentID: ID!): [Employee!]!
+
+  """Health check endpoint"""
+  health: String!
+}
+
+# ============================================================================
+# Mutations - Write operations (Create, Update, Delete)
+# ============================================================================
+
+type Mutation {
+  # Department mutations
+  """Create a new department"""
+  createDepartment(input: CreateDepartmentInput!): Department!
+
+  """Update an existing department"""
+  updateDepartment(id: ID!, input: UpdateDepartmentInput!): Department!
+
+  """
+  Delete a department by ID.
+  This will also delete all employees in the department (cascade delete).
+  """
+  deleteDepartment(id: ID!): Boolean!
+
+  # Employee mutations
+  """Create a new employee (department must exist)"""
+  createEmployee(input: CreateEmployeeInput!): Employee!
+
+  """Update an existing employee"""
+  updateEmployee(id: ID!, input: UpdateEmployeeInput!): Employee!
+
+  """Delete an employee by ID"""
+  deleteEmployee(id: ID!): Boolean!
+}

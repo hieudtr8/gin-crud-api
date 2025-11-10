@@ -1,34 +1,47 @@
-# 🚀 Gin CRUD API - Department & Employee Management
+# 🚀 Gin CRUD API - GraphQL Edition
 
-A clean architecture REST API built with Go, Gin framework, and EntGo ORM for type-safe database operations.
+A clean architecture **GraphQL API** built with Go, gqlgen, and EntGo ORM for type-safe database operations with schema-first development.
 
 ## 📋 Table of Contents
 - [Overview](#overview)
-- [Architecture](#architecture)
 - [Quick Start](#quick-start)
-- [API Documentation](#api-documentation)
+- [GraphQL Examples](#graphql-examples)
+- [Architecture](#architecture)
 - [Project Structure](#project-structure)
-- [Key Concepts for Go Beginners](#key-concepts-for-go-beginners)
 - [Development Guide](#development-guide)
+- [Key Concepts](#key-concepts)
 
 ## 🎯 Overview
 
-This project is a REST API for managing departments and employees with:
-- **Full CRUD operations** for both entities
+This project is a **GraphQL API** for managing departments and employees with:
+- **GraphQL with gqlgen**: Schema-first GraphQL code generation
+- **Interactive Playground**: Explore and test the API in your browser
+- **Full CRUD operations**: Queries and Mutations for both entities
 - **EntGo ORM**: Type-safe database operations with automatic migrations
-- **Clean architecture** with repository pattern
+- **Clean architecture**: Repository pattern with dependency injection
 - **PostgreSQL**: Production-ready database with automatic schema management
 - **Foreign key constraints**: Database-enforced relationships
-- **Thread-safe** operations with connection pooling
-- **Docker support** for easy PostgreSQL setup
-- **Auto-generated timestamps**: created_at and updated_at handled automatically
+- **Input validation**: Email format checking and referential integrity
+- **Type safety**: Compile-time errors for both GraphQL and database
+- **Docker support**: Easy PostgreSQL setup
+- **Legacy REST API preserved**: Compare implementations in `internal/legacy/`
+
+### ✨ Key Features
+
+🚀 **GraphQL Advantages:**
+- Single endpoint for all operations (`/query`)
+- Request exactly the data you need
+- No over-fetching or under-fetching
+- Interactive documentation via Playground
+- Strong typing with auto-generated code
+- Nested queries for related data
 
 ### Entity Relationship
 ```
 Department (1) ──────→ (many) Employee
     ├── id (UUID)           ├── id (UUID)
     ├── name                ├── name
-    ├── created_at          ├── email
+    ├── created_at          ├── email (unique)
     └── updated_at          ├── department_id (FK)
                             ├── created_at
                             └── updated_at
@@ -36,34 +49,252 @@ Department (1) ──────→ (many) Employee
 
 **Note**: Timestamps are automatically managed by EntGo
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Go 1.24.3+ installed
+- Docker (for PostgreSQL)
+- Web browser (for GraphQL Playground)
+
+### 1. Clone and Install
+```bash
+cd gin-crud-api
+go mod download
+```
+
+### 2. Configure Environment
+
+Create a `.env` file:
+```bash
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=gin_crud_api
+
+# Server Configuration
+GRAPHQL_PORT=8081
+```
+
+### 3. Start PostgreSQL
+
+```bash
+# Start PostgreSQL with Docker
+docker-compose up -d
+
+# Or use docker run
+docker run --name postgres-gin \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=gin_crud_api \
+  -p 5432:5432 \
+  -d postgres:15-alpine
+```
+
+### 4. Run the GraphQL Server
+
+```bash
+go run ./cmd/graphql
+```
+
+You should see:
+```
+╔═══════════════════════════════════════════════════════════╗
+║  GraphQL Server is running!                               ║
+╠═══════════════════════════════════════════════════════════╣
+║  Playground:  http://localhost:8081/                     ║
+║  GraphQL API: http://localhost:8081/query                ║
+╠═══════════════════════════════════════════════════════════╣
+║  Database:    PostgreSQL (via EntGo)                      ║
+║  Schema:      internal/graph/schema.graphql               ║
+╚═══════════════════════════════════════════════════════════╝
+```
+
+**What happens on startup?**
+- ✅ Connects to PostgreSQL database
+- ✅ Runs automatic schema migrations
+- ✅ Creates/updates database tables
+- ✅ Starts GraphQL server on port 8081
+- ✅ GraphQL Playground available at http://localhost:8081
+
+**No manual migrations needed!** EntGo handles everything automatically.
+
+### 5. Open GraphQL Playground
+
+Navigate to **http://localhost:8081** in your browser and try this query:
+
+```graphql
+query {
+  health
+}
+```
+
+You should see:
+```json
+{
+  "data": {
+    "health": "ok"
+  }
+}
+```
+
+## 🎮 GraphQL Examples
+
+### Create a Department
+
+```graphql
+mutation {
+  createDepartment(input: {name: "Engineering"}) {
+    id
+    name
+  }
+}
+```
+
+### Create an Employee
+
+```graphql
+mutation {
+  createEmployee(input: {
+    name: "Alice Smith"
+    email: "alice@example.com"
+    departmentID: "YOUR_DEPARTMENT_ID_HERE"
+  }) {
+    id
+    name
+    email
+  }
+}
+```
+
+### Query All Departments
+
+```graphql
+query {
+  departments {
+    id
+    name
+  }
+}
+```
+
+### Query Department with Employees (Nested Query!)
+
+```graphql
+query {
+  department(id: "your-dept-id") {
+    id
+    name
+    employees {
+      id
+      name
+      email
+    }
+  }
+}
+```
+
+### Query Employees with Department Info
+
+```graphql
+query {
+  employees {
+    id
+    name
+    email
+    department {
+      id
+      name
+    }
+  }
+}
+```
+
+### Update an Employee
+
+```graphql
+mutation {
+  updateEmployee(
+    id: "your-emp-id"
+    input: {
+      name: "Jane Doe"
+      email: "jane@example.com"
+      departmentID: "your-dept-id"
+    }
+  ) {
+    id
+    name
+    email
+  }
+}
+```
+
+### Delete a Department (Cascades to Employees)
+
+```graphql
+mutation {
+  deleteDepartment(id: "your-dept-id")
+}
+```
+
+### Get Employees by Department
+
+```graphql
+query {
+  employeesByDepartment(departmentID: "your-dept-id") {
+    id
+    name
+    email
+  }
+}
+```
+
 ## 🏗 Architecture
 
-### How the Code Flows
+### How GraphQL Requests Flow
 
 ```
-HTTP Request
+GraphQL Query/Mutation
     ↓
-Router (Gin) → Defines URL paths (/api/v1/departments, etc.)
+gqlgen Server → Parses and validates against schema
     ↓
-Handler → Processes request, validates input
+GraphQL Resolver → Processes operation, validates input
     ↓
-Repository Interface → Defines what operations are available
+Repository Interface → Defines CRUD operations
     ↓
 EntGo Repository → Type-safe database operations
     ↓
-EntGo Client → Generates SQL queries automatically
+EntGo Client → Generates SQL queries
     ↓
-PostgreSQL → Stores data with ACID guarantees
+PostgreSQL → Stores/retrieves data
 ```
 
 ### Why This Architecture?
 
-1. **Type Safety**: EntGo generates type-safe code at compile time
-2. **Automatic Migrations**: Schema changes applied automatically on startup
-3. **No Raw SQL**: Write Go code, EntGo generates optimized SQL
-4. **Separation of Concerns**: Each layer has one job
-5. **Easy Testing**: Can swap real database with mock
-6. **Maintainable**: Clear boundaries between components
+1. **Schema-First GraphQL**: Define API contract first, generate type-safe code
+2. **Double Type Safety**: Both gqlgen and EntGo provide compile-time safety
+3. **Automatic Migrations**: Database schema changes applied automatically
+4. **No Raw SQL**: Write Go code, EntGo generates optimized SQL
+5. **Self-Documenting API**: GraphQL schema serves as live documentation
+6. **Separation of Concerns**: Each layer has one specific responsibility
+7. **Easy Testing**: Can swap real database with mock repositories
+8. **Flexible Queries**: Clients request exactly what they need
+
+### What is gqlgen?
+
+**gqlgen** is a Go library for building GraphQL APIs using schema-first development:
+- Define API in `.graphql` files using GraphQL schema language
+- Automatically generates type-safe Go code
+- Generates resolver interfaces - you just implement the logic
+- Built-in support for GraphQL Playground
+- Compile-time type checking for all operations
+
+**Benefits**:
+- ✅ **Schema-First** - API contract defined in standard GraphQL SDL
+- ✅ **Type-Safe Resolvers** - Compile-time errors for mismatches
+- ✅ **Auto-Generated Code** - Less boilerplate, more productivity
+- ✅ **Built-in Playground** - Interactive API explorer
+- ✅ **Flexible Queries** - Clients request exactly what they need
 
 ### What is EntGo?
 
@@ -81,220 +312,284 @@ PostgreSQL → Stores data with ACID guarantees
 - ✅ **Better IDE support** - Autocomplete for queries
 - ✅ **Less boilerplate** - Generated CRUD operations
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Go 1.21+ installed
-- Docker (for PostgreSQL)
-- Make (optional, for shortcuts)
-
-### 1. Clone and Install
-```bash
-git clone <your-repo>
-cd gin-crud-api
-go mod download
-```
-
-### 2. Start PostgreSQL & Run Application
-
-```bash
-# 1. Start PostgreSQL with Docker
-docker-compose up -d
-# OR
-make docker-up
-
-# 2. Start the server (migrations run automatically!)
-go run cmd/api/main.go
-# OR
-make run
-
-# Server will start on http://localhost:8080
-# EntGo automatically creates/updates database tables on startup
-```
-
-**What happens on startup?**
-- ✅ Connects to PostgreSQL database
-- ✅ Runs automatic schema migrations (creates tables if they don't exist)
-- ✅ Updates existing tables if schema changed
-- ✅ Starts HTTP server on port 8080
-
-**No manual migrations needed!** EntGo handles everything automatically.
-
-### 3. Test the API
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# Create a department
-curl -X POST http://localhost:8080/api/v1/departments \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Engineering"}'
-```
-
-## 📚 API Documentation
-
-### Base URL
-```
-http://localhost:8080/api/v1
-```
-
-### Endpoints
-
-#### Departments
-
-| Method | Endpoint | Description | Request Body |
-|--------|----------|-------------|--------------|
-| GET | `/departments` | List all departments | - |
-| GET | `/departments/:id` | Get specific department | - |
-| POST | `/departments` | Create department | `{"name": "Engineering"}` |
-| PUT | `/departments/:id` | Update department | `{"name": "New Name"}` |
-| DELETE | `/departments/:id` | Delete department (cascade) | - |
-
-#### Employees
-
-| Method | Endpoint | Description | Request Body |
-|--------|----------|-------------|--------------|
-| GET | `/employees` | List all employees | - |
-| GET | `/employees/:id` | Get specific employee | - |
-| POST | `/employees` | Create employee | See below |
-| PUT | `/employees/:id` | Update employee | See below |
-| DELETE | `/employees/:id` | Delete employee | - |
-
-**Create/Update Employee Body:**
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "department_id": "uuid-here"
-}
-```
-
-### Example Flow
-
-```bash
-# 1. Create a department
-curl -X POST localhost:8080/api/v1/departments \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Engineering"}'
-
-# Response: {"id": "123-456", "name": "Engineering"}
-
-# 2. Create an employee in that department
-curl -X POST localhost:8080/api/v1/employees \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Alice",
-    "email": "alice@example.com",
-    "department_id": "123-456"
-  }'
-
-# 3. List all employees
-curl localhost:8080/api/v1/employees
-```
-
 ## 📁 Project Structure
 
 ```
-gin-crud-api/
+cmd/
+├── graphql/main.go              # GraphQL server entry point ⭐ PRIMARY
+└── legacy/rest_main.go          # Legacy REST server (reference)
+
+internal/
+├── graph/                       # GraphQL Layer ⭐
+│   ├── schema.graphql           # GraphQL schema (EDIT THIS!)
+│   ├── schema.resolvers.go      # Resolver implementations (EDIT THIS!)
+│   ├── resolver.go              # Dependency injection
+│   ├── generated.go             # Generated GraphQL code (DO NOT EDIT!)
+│   └── model/
+│       ├── models_gen.go        # Generated GraphQL models (DO NOT EDIT!)
+│       └── model.go             # Custom GraphQL models (if needed)
 │
-├── cmd/api/
-│   └── main.go                 # Application entry point
+├── ent/                         # EntGo ORM Layer
+│   ├── schema/
+│   │   ├── department.go        # Department schema (EDIT THIS!)
+│   │   └── employee.go          # Employee schema (EDIT THIS!)
+│   ├── client.go                # Generated database client (DO NOT EDIT!)
+│   ├── department*.go           # Generated department code (DO NOT EDIT!)
+│   ├── employee*.go             # Generated employee code (DO NOT EDIT!)
+│   └── ...                      # Other generated files
 │
-├── internal/                   # Private application code
-│   ├── config/
-│   │   └── config.go          # Environment configuration
-│   │
-│   ├── database/
-│   │   ├── database.go        # Repository interfaces
-│   │   ├── ent_client.go      # EntGo client initialization
-│   │   ├── ent_department_repo.go  # Department repository (EntGo)
-│   │   ├── ent_employee_repo.go    # Employee repository (EntGo)
-│   │   └── legacy/            # Old implementations (for reference)
-│   │
-│   ├── ent/                   # EntGo generated code
-│   │   ├── schema/
-│   │   │   ├── department.go  # Department schema definition
-│   │   │   └── employee.go    # Employee schema definition
-│   │   ├── department/        # Generated department code
-│   │   ├── employee/          # Generated employee code
-│   │   ├── client.go          # Generated database client
-│   │   └── ...                # Other generated files
-│   │
-│   ├── models/
-│   │   └── models.go          # DTOs and domain models
-│   │
-│   ├── department/
-│   │   └── handler.go         # HTTP handlers for departments
-│   │
-│   ├── employee/
-│   │   └── handler.go         # HTTP handlers for employees
-│   │
-│   └── router/
-│       └── router.go          # URL routing setup
+├── database/                    # Repository Layer
+│   ├── database.go              # Repository interfaces
+│   ├── ent_client.go            # EntGo client setup & migrations
+│   ├── ent_department_repo.go   # Department repository implementation
+│   └── ent_employee_repo.go     # Employee repository implementation
 │
-├── legacy/                     # Old implementations (for learning)
-│   ├── migrations/            # Manual SQL migrations (replaced by EntGo)
-│   └── README.md              # Explanation of legacy code
+├── models/                      # Domain models
+│   └── models.go                # Shared domain models
 │
-├── docker-compose.yml         # PostgreSQL setup
-├── Makefile                   # Development shortcuts
-└── .env                       # Configuration (don't commit!)
+├── config/                      # Configuration
+│   └── config.go                # Environment configuration loader
+│
+└── legacy/rest/                 # Legacy REST API (for reference)
+    ├── README.md                # REST API documentation
+    ├── department/handler.go    # REST department handlers
+    ├── employee/handler.go      # REST employee handlers
+    └── router/router.go         # REST routing configuration
+
+gqlgen.yml                       # gqlgen configuration
+docker-compose.yml               # PostgreSQL setup
+.env                             # Configuration (don't commit!)
 ```
 
-## 🔰 Key Concepts for Go Beginners
+### Important Files
 
-### 1. Interfaces (Repository Pattern)
+**Files You SHOULD Edit:**
+- **`internal/graph/schema.graphql`**: Define your GraphQL API here (manually edit)
+- **`internal/graph/schema.resolvers.go`**: Implement resolver logic here (manually edit - gqlgen preserves your code!)
+- **`internal/ent/schema/`**: Define your database schema here (manually edit)
+- **`internal/graph/resolver.go`**: Dependency injection setup (manually edit)
+
+**Files You Should NEVER Edit:**
+- **`internal/graph/generated.go`**: Fully generated by gqlgen (DO NOT EDIT!)
+- **`internal/graph/model/models_gen.go`**: Fully generated by gqlgen (DO NOT EDIT!)
+- **`internal/ent/*.go`** (except `/schema/`): Fully generated by EntGo (DO NOT EDIT!)
+
+**Note on `schema.resolvers.go`**: This file has a special regeneration behavior - when you run `gqlgen generate`, it updates function signatures but **preserves your implementation code**. This is different from fully-generated files that get completely rewritten.
+
+**Other Important Files:**
+- **`internal/legacy/rest/README.md`**: REST API documentation and comparison
+- **`gqlgen.yml`**: gqlgen configuration
+
+## 🛠 Development Guide
+
+### Common Commands
+
+```bash
+# Development
+go run ./cmd/graphql                    # Run GraphQL server
+go mod download                         # Download dependencies
+go mod tidy                             # Tidy dependencies
+
+# Code Generation
+go generate ./internal/ent              # Regenerate EntGo code after DB schema changes
+go run github.com/99designs/gqlgen generate  # Regenerate GraphQL code after schema changes
+
+# Docker
+docker-compose up -d                    # Start PostgreSQL
+docker-compose down                     # Stop PostgreSQL
+
+# Build
+go build -o ./build/graphql-server ./cmd/graphql  # Build for production
+./build/graphql-server                  # Run the binary
+```
+
+### Adding a New Field to GraphQL Type
+
+1. **Update GraphQL Schema** (`internal/graph/schema.graphql`):
+   ```graphql
+   type Employee {
+     id: ID!
+     name: String!
+     email: String!
+     phone: String  # Add new field
+     departmentID: ID!
+   }
+   ```
+
+2. **Update EntGo Schema** (`internal/ent/schema/employee.go`):
+   ```go
+   field.String("phone").Optional()
+   ```
+
+3. **Regenerate Code**:
+   ```bash
+   go generate ./internal/ent
+   go run github.com/99designs/gqlgen generate
+   ```
+
+4. **Update Resolvers** (`internal/graph/schema.resolvers.go`):
+   Add phone field to conversion logic
+
+5. **Restart Application** - EntGo auto-migrates the new column!
+
+### Adding a New GraphQL Type/Entity
+
+1. **Define GraphQL Schema** (`internal/graph/schema.graphql`):
+   ```graphql
+   type Project {
+     id: ID!
+     name: String!
+     description: String
+   }
+
+   input CreateProjectInput {
+     name: String!
+     description: String
+   }
+
+   extend type Query {
+     project(id: ID!): Project
+     projects: [Project!]!
+   }
+
+   extend type Mutation {
+     createProject(input: CreateProjectInput!): Project!
+   }
+   ```
+
+2. **Create EntGo Schema**:
+   ```bash
+   go run entgo.io/ent/cmd/ent new --target internal/ent/schema Project
+   ```
+
+3. **Define Fields in EntGo Schema** (`internal/ent/schema/project.go`)
+
+4. **Regenerate Code**:
+   ```bash
+   go generate ./internal/ent
+   go run github.com/99designs/gqlgen generate
+   ```
+
+5. **Create Repository Interface** in `internal/database/database.go`
+
+6. **Implement Repository** in `internal/database/ent_project_repo.go`
+
+7. **Update Resolver Struct** (`internal/graph/resolver.go`) to inject new repository
+
+8. **Implement Resolvers** in `internal/graph/schema.resolvers.go`
+
+### Configuration (.env file)
+
+```bash
+# GraphQL Server
+GRAPHQL_PORT=8081
+
+# PostgreSQL Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=gin_crud_api
+DB_SSLMODE=disable
+
+# Connection Pool
+DB_MAX_CONNS=25
+DB_MIN_CONNS=5
+```
+
+## 🔰 Key Concepts
+
+### 1. Schema-First GraphQL
+
+Define your API in `.graphql` files, then generate type-safe code:
+
+```graphql
+# internal/graph/schema.graphql
+type Department {
+  id: ID!
+  name: String!
+  employees: [Employee!]
+}
+
+input CreateDepartmentInput {
+  name: String!
+}
+
+type Mutation {
+  createDepartment(input: CreateDepartmentInput!): Department!
+}
+```
+
+Then run: `go run github.com/99designs/gqlgen generate`
+
+### 2. Type-Safe Resolvers
+
+gqlgen generates resolver interfaces, you implement the logic:
+
 ```go
-// Interface defines what methods must exist
+// internal/graph/schema.resolvers.go
+func (r *mutationResolver) CreateDepartment(
+    ctx context.Context,
+    input model.CreateDepartmentInput,
+) (*model.Department, error) {
+    // Validate input
+    if input.Name == "" {
+        return nil, errors.New("department name is required")
+    }
+
+    // Create domain model
+    dept := &models.Department{
+        ID:   uuid.New().String(),
+        Name: input.Name,
+    }
+
+    // Save via repository
+    if err := r.DeptRepo.Save(dept); err != nil {
+        return nil, err
+    }
+
+    // Return GraphQL model
+    return &model.Department{
+        ID:   dept.ID,
+        Name: dept.Name,
+    }, nil
+}
+```
+
+### 3. Repository Pattern
+
+Handlers/Resolvers depend on repository interfaces, not implementations:
+
+```go
+// Interface defines operations
 type DepartmentRepository interface {
     Save(dept *models.Department) error
     FindByID(id string) (*models.Department, error)
-    // ... other methods
+    FindAll() ([]*models.Department, error)
+    Update(dept *models.Department) error
+    Delete(id string) error
 }
 
-// Different implementations of the same interface
-type InMemoryDepartmentRepo struct { }  // Uses maps
-type PostgresDepartmentRepo struct { }   // Uses database
-
-// Both implement the same interface, so handlers don't care which one is used!
-```
-
-### 2. Pointers (`*` and `&`)
-```go
-// * in type = "pointer to"
-func Save(dept *models.Department)  // Receives pointer, can modify
-
-// & = "get address of"
-dept := &models.Department{...}  // Create and get pointer
-
-// Why? Efficiency and sharing
-// - Pointers avoid copying large structs
-// - Multiple parts can access same data
-```
-
-### 3. Error Handling
-```go
-// Go functions often return (result, error)
-dept, err := repository.FindByID(id)
-if err != nil {
-    // Handle error
-    return nil, err
+// EntGo implementation
+type EntDepartmentRepo struct {
+    client *ent.Client
 }
-// Use result
+
 ```
 
 ### 4. Dependency Injection
+
 ```go
-// Handler receives what it needs through constructor
-func NewHandler(repo DepartmentRepository) *Handler {
-    return &Handler{repo: repo}
-}
-// This makes testing easy - just pass a mock repository!
+// Inject repositories into resolver
+resolver := graph.NewResolver(deptRepo, empRepo)
+
+// This makes testing easy - just pass mock repositories!
 ```
 
 ### 5. EntGo Schema-First Approach
+
 ```go
-// Define your database schema in Go (internal/ent/schema/department.go)
+// Define database schema in Go (internal/ent/schema/department.go)
 func (Department) Fields() []ent.Field {
     return []ent.Field{
         field.UUID("id", uuid.UUID{}).Default(uuid.New),
@@ -307,216 +602,25 @@ func (Department) Fields() []ent.Field {
 // - SQL CREATE TABLE statements
 // - Type-safe query builders
 // - CRUD methods
-
-// Use the generated client (no SQL writing needed!)
-dept, err := client.Department.
-    Query().
-    Where(department.NameContains("Engineering")).
-    First(ctx)
 ```
 
-### 6. EntGo Code Generation
-```bash
-# After modifying schema files, regenerate code:
-go generate ./internal/ent
-
-# This creates/updates all database client code automatically
-# EntGo generates ~20+ files with type-safe operations
-```
-
-## 🛠 Development Guide
-
-### Configuration (.env file)
-
-```bash
-# Server settings
-SERVER_PORT=8080
-
-# PostgreSQL settings
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=gin_crud_api
-DB_SSLMODE=disable
-
-# Connection pool settings
-DB_MAX_CONNS=25
-DB_MIN_CONNS=5
-```
-
-**Note**: These settings are automatically loaded by the application. EntGo uses these to connect to PostgreSQL and manage the connection pool.
-
-### Common Commands
-
-```bash
-# Development
-make help           # Show all commands
-make docker-up      # Start PostgreSQL
-make run            # Run application (migrations automatic!)
-make docker-down    # Stop PostgreSQL
-
-# EntGo Commands
-go generate ./internal/ent    # Regenerate EntGo code after schema changes
-
-# Testing
-make test           # Run tests
-./test_api.sh       # Run integration tests
-
-# Build
-make build          # Create executable
-./build/gin-crud-api  # Run the executable
-```
-
-### Working with EntGo Schemas
-
-When you need to modify the database schema:
-
-1. **Edit Schema Files** (`internal/ent/schema/*.go`)
-   ```go
-   // Example: Add a field to Department
-   field.String("description").Optional()
-   ```
-
-2. **Regenerate Code**
-   ```bash
-   go generate ./internal/ent
-   ```
-
-3. **Restart Application**
-   ```bash
-   go run cmd/api/main.go
-   # EntGo automatically applies schema changes!
-   ```
-
-**That's it!** No manual SQL migrations needed.
-
-### How Data Flows Through the Code
-
-1. **Request arrives** at router (`/api/v1/departments`)
-2. **Router** calls appropriate handler (`deptHandler.Create`)
-3. **Handler** validates input and calls repository
-4. **Repository** uses EntGo client for type-safe operations
-5. **EntGo** generates and executes SQL queries
-6. **PostgreSQL** stores/retrieves data
-7. **Response** sent back to client
-
-### Adding New Features with EntGo
-
-**Example: Adding a `phone` field to Employee**
-
-1. **Update EntGo Schema** (`internal/ent/schema/employee.go`):
-   ```go
-   func (Employee) Fields() []ent.Field {
-       return []ent.Field{
-           // ... existing fields
-           field.String("phone").
-               Optional().
-               Comment("Employee phone number"),
-       }
-   }
-   ```
-
-2. **Regenerate EntGo Code**:
-   ```bash
-   go generate ./internal/ent
-   ```
-
-3. **Update Domain Model** (`internal/models/models.go`):
-   ```go
-   type Employee struct {
-       // ... existing fields
-       Phone string `json:"phone,omitempty"`
-   }
-   ```
-
-4. **Update Repository** (`internal/database/ent_employee_repo.go`):
-   ```go
-   // Add phone to Save and Update methods
-   SetPhone(emp.Phone)
-   ```
-
-5. **Restart Application**:
-   ```bash
-   go run cmd/api/main.go
-   # EntGo automatically adds the phone column!
-   ```
-
-**No SQL writing needed!** EntGo handles all database changes automatically.
-
-## 🧪 Testing
-
-```bash
-# Run the test script
-./test_api.sh
-
-# Manual testing with curl
-curl -X POST localhost:8080/api/v1/departments \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Sales"}'
-```
+After changing schemas, run: `go generate ./internal/ent`
 
 ## 🚨 Important Notes
 
-1. **UUID IDs**: All IDs are UUIDs (universally unique identifiers)
-2. **Auto-Migrations**: EntGo automatically creates/updates database tables on startup
-3. **Foreign Key Constraints**: Database enforces relationships (cannot add employee with invalid department_id)
-4. **Timestamps**: `created_at` and `updated_at` managed automatically by EntGo
-5. **Type Safety**: Compile-time checking for all database operations
-6. **Validation**: Email must be valid format, all required fields enforced by database
-7. **Empty Lists**: APIs return `[]` not `null` when no data exists
-8. **Code Generation**: Always run `go generate ./internal/ent` after schema changes
+1. **Two Code Generators**: gqlgen (GraphQL) and EntGo (Database) - both use schema-first approach
+2. **UUID IDs**: All IDs are UUIDs (universally unique identifiers)
+3. **Auto-Migrations**: EntGo automatically creates/updates database tables on startup
+4. **Foreign Key Constraints**: Database enforces relationships
+5. **Timestamps**: `created_at` and `updated_at` managed automatically by EntGo
+6. **Type Safety**: Compile-time checking for both GraphQL and database operations
+7. **Validation**: Email format, required fields, referential integrity all enforced
+8. **GraphQL Playground**: Provides interactive API documentation
+9. **Legacy REST API**: Available in `internal/legacy/rest/` for comparison
 
-## 🐛 Troubleshooting
+## 🎯 Key Technologies
 
-### Port Already in Use
-```bash
-# Find and kill process on port 8080
-lsof -i :8080
-kill -9 <PID>
-```
-
-### PostgreSQL Connection Failed
-```bash
-# Check if PostgreSQL is running
-docker ps
-
-# Restart PostgreSQL
-make docker-down
-make docker-up
-```
-
-### EntGo Schema Generation Failed
-```bash
-# Re-generate EntGo code
-go generate ./internal/ent
-
-# If still failing, check schema files for syntax errors
-# Look in internal/ent/schema/*.go
-```
-
-### Database Schema Out of Sync
-```bash
-# EntGo migrations run on startup, so just restart the app
-go run cmd/api/main.go
-
-# To manually inspect database schema:
-docker exec -it gin_crud_postgres psql -U postgres -d gin_crud_api -c "\d departments"
-docker exec -it gin_crud_postgres psql -U postgres -d gin_crud_api -c "\d employees"
-```
-
-## 📝 License
-
-MIT
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
-
----
-
-Built with ❤️ using Go and Gin Framework
+- **[gqlgen](https://gqlgen.com/)** - GraphQL code generation for Go
+- **[EntGo](https://entgo.io/)** - Type-safe database ORM with code generation
+- **[PostgreSQL](https://www.postgresql.org/)** - Relational database
+- **[Docker](https://www.docker.com/)** - Containerization for PostgreSQL
