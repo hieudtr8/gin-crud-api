@@ -68,6 +68,15 @@ DB_PASSWORD=secure123 docker-compose -f docker-compose.prod.yml up --build -d
 # - PostgreSQL: NOT exposed (internal network only)
 ```
 
+**For Cloud Databases (AWS RDS, Google Cloud SQL, Azure Database):**
+```bash
+# Enable SSL for cloud database connections
+DB_PASSWORD=secure123 \
+GINAPI_DATABASE_SSLMODE=require \
+GINAPI_DATABASE_HOST=your-rds-endpoint.amazonaws.com \
+docker-compose -f docker-compose.prod.yml up -d
+```
+
 ## 🛠️ Common Commands
 
 ### Local Development
@@ -138,6 +147,12 @@ Both deployments use the `GINAPI_` prefix for configuration:
 - `GINAPI_LOGGING_LEVEL` - Log level (local: debug, prod: info)
 - `GINAPI_LOGGING_PRETTY` - Pretty output (local: true, prod: false)
 
+**SSL Configuration**:
+- Docker PostgreSQL (default): `GINAPI_DATABASE_SSLMODE=disable`
+- Cloud Databases (AWS RDS, Cloud SQL): `GINAPI_DATABASE_SSLMODE=require` or `verify-full`
+- Standard postgres:16-alpine image does NOT have SSL configured
+- For cloud deployments, always use SSL!
+
 ### Override Configuration
 
 **Local Development - Custom Settings**:
@@ -171,7 +186,7 @@ docker-compose -f docker-compose.prod.yml up -d
 | **Log Level** | `debug` | `info` |
 | **Log Format** | Pretty console | JSON |
 | **PostgreSQL Port** | 5432 exposed | NOT exposed |
-| **SSL Mode** | `disable` | `require` |
+| **SSL Mode** | `disable` | `disable` (Docker); `require` (Cloud DBs) |
 | **Max Connections** | 25 | 50 |
 | **Resource Limits** | None | CPU/Memory limits |
 | **Restart Policy** | `unless-stopped` | `always` |
