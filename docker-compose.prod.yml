@@ -52,7 +52,9 @@ services:
       GINAPI_DATABASE_USER: ${DB_USER:-postgres}
       GINAPI_DATABASE_PASSWORD: ${DB_PASSWORD:-postgres}  # ⚠️ MUST be overridden!
       GINAPI_DATABASE_DBNAME: ${DB_NAME:-gin_crud_api}
-      GINAPI_DATABASE_SSLMODE: ${DB_SSLMODE:-require}  # SSL required in production
+      # Note: Local Docker PostgreSQL doesn't have SSL configured
+      # In real production (AWS RDS, Cloud SQL, etc.), set: GINAPI_DATABASE_SSLMODE=require
+      GINAPI_DATABASE_SSLMODE: ${DB_SSLMODE:-disable}
       GINAPI_DATABASE_MAX_CONNS: ${DB_MAX_CONNS:-50}
       GINAPI_DATABASE_MIN_CONNS: ${DB_MIN_CONNS:-10}
 

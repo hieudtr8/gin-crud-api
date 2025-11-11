@@ -13,7 +13,7 @@ database:
   user: postgres
   password: postgres    # IMPORTANT: Override with GINAPI_DATABASE_PASSWORD in production
   dbname: gin_crud_api
-  sslmode: require      # SSL required for production security
+  sslmode: disable      # Default for Docker; override to 'require' for cloud databases (RDS, Cloud SQL)
   max_conns: 50         # Higher connection pool for production load
   min_conns: 10         # More idle connections for better performance
 
