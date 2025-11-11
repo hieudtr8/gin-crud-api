@@ -1,0 +1,90 @@
+# Docker Compose for Production Deployment
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+#
+# IMPORTANT: Override sensitive values using environment variables or .env file:
+#   DB_PASSWORD=<secure-password> docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gin_crud_postgres_prod
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}  # ⚠️ MUST be overridden in production!
+      POSTGRES_DB: ${DB_NAME:-gin_crud_api}
+    # Production: PostgreSQL port NOT exposed externally for security
+    # Only accessible via Docker network
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+    restart: always  # Always restart in production
+    # Production-specific resource limits (adjust based on your server)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  graphql-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gin_crud_graphql_prod
+    ports:
+      - "${GRAPHQL_PORT:-8081}:8081"  # GraphQL API exposed
+    environment:
+      # Use production environment config
+      APP_ENV: prod
+
+      # Database Configuration
+      GINAPI_DATABASE_HOST: postgres
+      GINAPI_DATABASE_PORT: 5432
+      GINAPI_DATABASE_USER: ${DB_USER:-postgres}
+      GINAPI_DATABASE_PASSWORD: ${DB_PASSWORD:-postgres}  # ⚠️ MUST be overridden!
+      GINAPI_DATABASE_DBNAME: ${DB_NAME:-gin_crud_api}
+      GINAPI_DATABASE_SSLMODE: ${DB_SSLMODE:-require}  # SSL required in production
+      GINAPI_DATABASE_MAX_CONNS: ${DB_MAX_CONNS:-50}
+      GINAPI_DATABASE_MIN_CONNS: ${DB_MIN_CONNS:-10}
+
+      # Logging Configuration (production defaults from prod.yaml)
+      GINAPI_LOGGING_LEVEL: ${LOG_LEVEL:-info}  # Less verbose
+      GINAPI_LOGGING_PRETTY: "false"  # JSON output for log aggregation
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: always  # Always restart in production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    # Production-specific resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+volumes:
+  postgres_data_prod:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

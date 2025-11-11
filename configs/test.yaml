@@ -1,0 +1,21 @@
+# Test Environment Configuration
+# This file contains settings optimized for running tests
+# Tests use in-memory SQLite by default (configured in testutil)
+
+server:
+  graphql_port: "8081"  # Not typically used in tests
+  rest_port: "8080"     # Not typically used in tests
+
+database:
+  host: localhost       # Tests typically use in-memory SQLite
+  port: 5432
+  user: postgres
+  password: postgres
+  dbname: gin_crud_api_test
+  sslmode: disable
+  max_conns: 10         # Lower limits for test environment
+  min_conns: 2
+
+logging:
+  level: warn           # Reduced logging during tests (only warnings and errors)
+  pretty: false         # JSON output for easier test result parsing

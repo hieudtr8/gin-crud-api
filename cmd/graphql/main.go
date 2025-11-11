@@ -13,27 +13,30 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load .env file if it exists (optional)
-	_ = godotenv.Load()
+	// Determine environment (dev, prod, test)
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "dev" // Default to development
+	}
 
-	// Load configuration
-	cfg, err := config.Load()
+	// Load configuration from YAML and environment variables
+	cfg, err := config.LoadConfig(env)
 	if err != nil {
 		// Can't use logger yet, use panic
 		panic(fmt.Sprintf("Failed to load configuration: %v", err))
 	}
 
 	// Initialize logger first
-	logger.Init(cfg.LogLevel, cfg.LogPretty)
+	logger.Init(cfg.Logging.Level, cfg.Logging.Pretty)
 	log := logger.GetLogger()
 
 	log.Info().
-		Str("log_level", cfg.LogLevel).
-		Bool("pretty", cfg.LogPretty).
+		Str("environment", env).
+		Str("log_level", cfg.Logging.Level).
+		Bool("pretty", cfg.Logging.Pretty).
 		Msg("Application starting")
 
 	// Initialize EntGo client (PostgreSQL) with auto-migrations
@@ -75,12 +78,8 @@ func main() {
 	// GraphQL endpoint at "/query"
 	http.Handle("/query", srv)
 
-	// Determine GraphQL port (default: 8081)
-	graphqlPort := os.Getenv("GRAPHQL_PORT")
-	if graphqlPort == "" {
-		graphqlPort = "8081"
-	}
-
+	// Get GraphQL port from configuration
+	graphqlPort := cfg.Server.GraphQLPort
 	serverAddr := fmt.Sprintf(":%s", graphqlPort)
 
 	// Log server startup info

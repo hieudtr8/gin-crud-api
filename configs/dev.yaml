@@ -1,0 +1,22 @@
+# Development Environment Configuration
+# This file contains default settings for local development
+# Override any value by setting environment variables: GINAPI_<SECTION>_<KEY>
+# Example: GINAPI_DATABASE_HOST=localhost
+
+server:
+  graphql_port: "8081"  # GraphQL API server port
+  rest_port: "8080"     # Legacy REST API server port
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  dbname: gin_crud_api
+  sslmode: disable      # SSL disabled for local development
+  max_conns: 25         # Maximum database connections
+  min_conns: 5          # Minimum idle connections
+
+logging:
+  level: debug          # Verbose logging for development (debug, info, warn, error)
+  pretty: true          # Pretty-printed console output with colors

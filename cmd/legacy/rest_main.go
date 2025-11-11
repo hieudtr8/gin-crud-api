@@ -7,21 +7,24 @@ import (
 	"gin-crud-api/internal/legacy/rest/employee"
 	"gin-crud-api/internal/legacy/rest/router"
 	"log"
-
-	"github.com/joho/godotenv"
+	"os"
 )
 
 func main() {
-	// Load .env file (ignore error if file doesn't exist)
-	_ = godotenv.Load()
+	// Determine environment (dev, prod, test)
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "dev" // Default to development
+	}
 
-	// Load configuration
-	cfg, err := config.Load()
+	// Load configuration from YAML and environment variables
+	cfg, err := config.LoadConfig(env)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
 	log.Printf("🚀 Starting Gin CRUD API with EntGo ORM")
+	log.Printf("🌍 Environment: %s", env)
 	log.Printf("📊 Database: PostgreSQL at %s:%d", cfg.Database.Host, cfg.Database.Port)
 
 	// Initialize EntGo client (automatically runs migrations)
@@ -47,7 +50,7 @@ func main() {
 	r := router.Setup(deptHandler, empHandler)
 
 	// Start server
-	serverAddr := ":" + cfg.Port
+	serverAddr := ":" + cfg.Server.RESTPort
 	log.Printf("🌐 Server starting on http://localhost%s", serverAddr)
 	log.Printf("📝 API endpoints available at http://localhost%s/api/v1", serverAddr)
 	log.Printf("💚 Health check at http://localhost%s/health", serverAddr)

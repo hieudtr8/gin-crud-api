@@ -5,10 +5,12 @@ A clean architecture **GraphQL API** built with Go, gqlgen, and EntGo ORM for ty
 ## 📋 Table of Contents
 - [Overview](#-overview)
 - [Quick Start](#-quick-start)
+  - [Environment Configuration](#environment-configuration)
 - [GraphQL Examples](#-graphql-examples)
 - [Development Commands](#-development-commands)
 - [Architecture](#-architecture)
 - [Testing](#-testing)
+- [Common Tasks](#-common-tasks)
 
 ## 🎯 Overview
 
@@ -17,6 +19,7 @@ A **GraphQL API** for managing departments and employees featuring:
 - **EntGo ORM**: Type-safe database operations with automatic migrations
 - **PostgreSQL**: Production-ready database with foreign key constraints
 - **Clean architecture**: Repository pattern with dependency injection
+- **Viper configuration**: Environment-specific YAML configs with env var overrides
 - **Modular schema**: Organized by entity for easy scaling
 - **Docker support**: One-command deployment
 
@@ -56,32 +59,63 @@ query {
 
 ### Docker Deployment
 
+**Local Development** (uses `configs/dev.yaml`):
 ```bash
-# One command to start everything (PostgreSQL + API)
+# Start all services with debug logging
 make docker-run
+```
 
-# Or use docker-compose directly
-docker-compose up -d
+**Production** (uses `configs/prod.yaml`):
+```bash
+# Set secure password first!
+export DB_PASSWORD=your_secure_password
+
+# Start production stack
+make docker-run-prod
 ```
 
 Access at **http://localhost:8081**
 
+> **Note**: See [DOCKER.md](DOCKER.md) for complete Docker deployment guide including security checklists, troubleshooting, and configuration details.
+
 ### Environment Configuration
 
-Create `.env` file:
-```bash
-# GraphQL Server
-GRAPHQL_PORT=8081
+The project uses **Viper** with environment-specific YAML config files:
 
-# PostgreSQL (use "postgres" for Docker, "localhost" for local)
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=gin_crud_api
+**Default (Development):**
+```bash
+make api  # Uses configs/dev.yaml automatically
 ```
 
-**Note**: When using Docker, `DB_HOST` should be `postgres` (handled automatically by docker-compose).
+**Custom Configuration:**
+```bash
+# Option 1: Select environment (dev, prod, test)
+APP_ENV=prod make api
+
+# Option 2: Override specific values with GINAPI_ prefix
+GINAPI_DATABASE_HOST=localhost \
+GINAPI_DATABASE_PASSWORD=secret \
+GINAPI_LOGGING_LEVEL=debug \
+make api
+
+# Option 3: Create custom config (gitignored)
+# Create configs/local.yaml with your settings
+APP_ENV=local make api
+```
+
+**Environment Variable Format:**
+All configuration overrides use the `GINAPI_` prefix:
+- `GINAPI_SERVER_GRAPHQL_PORT` - GraphQL server port (default: 8081)
+- `GINAPI_DATABASE_HOST` - Database host (dev: `localhost`, prod: `postgres`)
+- `GINAPI_DATABASE_PASSWORD` - Database password ⚠️ **Always override in production**
+- `GINAPI_LOGGING_LEVEL` - Log level (debug, info, warn, error)
+
+**Configuration Files:**
+- `configs/dev.yaml` - Development defaults (localhost, debug logging)
+- `configs/prod.yaml` - Production defaults (postgres host, SSL required)
+- `configs/test.yaml` - Test environment settings
+
+See `configs/README.md` for complete configuration reference.
 
 ## 🎮 GraphQL Examples
 
@@ -149,12 +183,18 @@ make generate         # Regenerate all code (EntGo + GraphQL)
 make generate-graphql # Regenerate GraphQL code only
 make generate-ent     # Regenerate EntGo database code only
 
-# Docker & Database
-make docker-run       # Start all services (PostgreSQL + API)
-make docker-build     # Build Docker image
+# Docker & Database (Local)
+make docker-run       # Start all services (PostgreSQL + API) - LOCAL
+make docker-build     # Build Docker image (local)
 make docker-down      # Stop all containers
 make docker-logs-api  # Show API logs
-make docker-ps        # Show running containers
+make docker-rebuild   # Rebuild and restart everything
+
+# Docker & Database (Production)
+make docker-run-prod      # Start all services - PRODUCTION
+make docker-build-prod    # Build production image
+make docker-logs-api-prod # Show production API logs
+make docker-rebuild-prod  # Rebuild and restart production
 
 # Build
 make build            # Build production binary
@@ -230,7 +270,13 @@ internal/
 │   └── ent_employee_repo.go     # Employee repository
 │
 └── config/                      # Configuration
-    └── config.go                # Environment loader
+    └── config.go                # Viper configuration loader
+
+configs/                         # Environment-specific configs ⭐
+├── dev.yaml                     # Development environment
+├── prod.yaml                    # Production environment
+├── test.yaml                    # Test environment
+└── README.md                    # Configuration documentation
 
 gqlgen.yml                       # gqlgen configuration
 docker-compose.yml               # Docker orchestration
@@ -356,6 +402,7 @@ make generate  # Auto-creates project.resolvers.go
 
 - **Schema-first GraphQL**: Define API in `.graphql`, generate type-safe code
 - **Modular organization**: Schemas split by entity for scalability
+- **Environment-based config**: Viper with YAML files (dev/prod/test) + env var overrides
 - **Auto-migrations**: Database schema updates automatically
 - **Type safety**: Compile-time checking for GraphQL and database
 - **Repository pattern**: Clean separation of concerns
@@ -370,13 +417,17 @@ make generate  # Auto-creates project.resolvers.go
 3. **Helper functions**: Put them in `validation.go`, not in resolver files
 4. **GraphQL models**: Used throughout the entire app (no separate domain models)
 5. **Auto-migrations**: EntGo handles database schema changes on startup
-6. **Docker vs Local**: Use `DB_HOST=postgres` for Docker, `localhost` for local
+6. **Configuration**: Use `APP_ENV` to select environment (dev/prod/test) and `GINAPI_` prefix for overrides
+7. **Docker deployment**: Automatically uses `configs/prod.yaml` with `GINAPI_DATABASE_HOST=postgres` override
 
 ## 📚 Resources
 
 - **[gqlgen Documentation](https://gqlgen.com/)** - GraphQL code generation
 - **[EntGo Documentation](https://entgo.io/)** - ORM and migrations
+- **[Viper Documentation](https://github.com/spf13/viper)** - Configuration management
 - **[GraphQL Playground](http://localhost:8081)** - Interactive API explorer (when server is running)
+- **[DOCKER.md](DOCKER.md)** - Complete Docker deployment guide (local vs production)
+- **[configs/README.md](configs/README.md)** - Detailed configuration reference
 - **Legacy REST API**: See `internal/legacy/rest/README.md` for comparison
 
 ---

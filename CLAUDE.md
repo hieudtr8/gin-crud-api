@@ -28,6 +28,98 @@ This is a **GraphQL API** built with Go, gqlgen, and EntGo ORM for managing Depa
 - Legacy REST handlers also use GraphQL models for data operations
 - Kept for backward compatibility reference
 
+## Configuration System
+
+The project uses **Viper** for configuration management with environment-specific YAML files and environment variable overrides.
+
+### Configuration Architecture
+
+1. **YAML Config Files** (`configs/`): Environment-specific default configurations
+   - `dev.yaml` - Development environment (localhost, debug logging)
+   - `prod.yaml` - Production environment (postgres host, info logging, SSL required)
+   - `test.yaml` - Test environment (reduced logging, lower resource limits)
+
+2. **Environment Variables**: Override YAML values with `GINAPI_` prefix
+   - Format: `GINAPI_<SECTION>_<KEY>` (e.g., `GINAPI_DATABASE_HOST=localhost`)
+   - Automatically bind to nested YAML keys (`.` becomes `_`)
+
+3. **Configuration Priority** (highest to lowest):
+   - Environment variables (`GINAPI_*`)
+   - YAML config file (`configs/{APP_ENV}.yaml`)
+   - Built-in defaults in code
+
+### Environment Selection
+
+Set `APP_ENV` to choose the configuration file:
+
+```bash
+# Development (default)
+make api                    # Uses configs/dev.yaml
+APP_ENV=dev go run cmd/graphql/main.go
+
+# Production
+APP_ENV=prod go run cmd/graphql/main.go
+
+# Test
+APP_ENV=test go test ./...
+```
+
+### Environment Variables Reference
+
+**Format**: All environment variables use the `GINAPI_` prefix with sections separated by underscores.
+
+**Server Configuration:**
+- `GINAPI_SERVER_GRAPHQL_PORT` - GraphQL API port (default: 8081)
+- `GINAPI_SERVER_REST_PORT` - Legacy REST API port (default: 8080)
+
+**Database Configuration:**
+- `GINAPI_DATABASE_HOST` - PostgreSQL host (dev: localhost, prod: postgres)
+- `GINAPI_DATABASE_PORT` - PostgreSQL port (default: 5432)
+- `GINAPI_DATABASE_USER` - Database username (default: postgres)
+- `GINAPI_DATABASE_PASSWORD` - Database password (⚠️ **Always override in production**)
+- `GINAPI_DATABASE_DBNAME` - Database name (default: gin_crud_api)
+- `GINAPI_DATABASE_SSLMODE` - SSL mode (dev: disable, prod: require)
+- `GINAPI_DATABASE_MAX_CONNS` - Max connection pool size (dev: 25, prod: 50)
+- `GINAPI_DATABASE_MIN_CONNS` - Min idle connections (dev: 5, prod: 10)
+
+**Logging Configuration:**
+- `GINAPI_LOGGING_LEVEL` - Log level: debug, info, warn, error (dev: debug, prod: info)
+- `GINAPI_LOGGING_PRETTY` - Pretty console output (dev: true, prod: false)
+
+### Configuration Examples
+
+**Development (using dev.yaml defaults):**
+```bash
+# Uses configs/dev.yaml - no env vars needed
+make api
+```
+
+**Development with overrides:**
+```bash
+# Override specific values
+GINAPI_LOGGING_LEVEL=debug \
+GINAPI_DATABASE_PASSWORD=secret \
+make api
+```
+
+**Production (Docker):**
+```bash
+# In docker-compose.yml
+environment:
+  APP_ENV: prod                           # Load configs/prod.yaml
+  GINAPI_DATABASE_HOST: postgres          # Override for Docker networking
+  GINAPI_DATABASE_PASSWORD: ${DB_PASSWORD} # Secure password from env
+```
+
+**Local custom configuration:**
+```bash
+# Create configs/local.yaml (gitignored)
+# Then run with:
+APP_ENV=local make api
+```
+
+For complete details, see `configs/README.md`.
+
 ## Commands
 
 All commands are available via Makefile for convenience. Run `make help` to see all available commands.
@@ -429,10 +521,16 @@ The project uses structured logging with zerolog:
 - `ERROR`: System failures requiring attention
 
 ### Configuration
-Set in `.env`:
+Set in YAML config files (`configs/dev.yaml`, `configs/prod.yaml`) or override with environment variables:
 ```bash
-LOG_LEVEL=info       # debug, info, warn, error
-LOG_PRETTY=true      # Pretty console output for development
+# Via environment variables
+GINAPI_LOGGING_LEVEL=debug   # debug, info, warn, error
+GINAPI_LOGGING_PRETTY=true   # Pretty console output for development
+
+# Or in configs/dev.yaml
+logging:
+  level: debug
+  pretty: true
 ```
 
 ### Request Tracing
@@ -465,25 +563,34 @@ Access at: http://localhost:8081
 - **Volumes**: PostgreSQL data persisted
 
 ### Environment Variables
-- `GRAPHQL_PORT`: Server port (default: 8081)
-- `DB_HOST`: Database host (use `postgres` for Docker, `localhost` for local)
-- `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`: Database config
-- `LOG_LEVEL`: Logging level (debug, info, warn, error)
-- `LOG_PRETTY`: Pretty logs (true for dev, false for production)
+
+**Configuration Selection:**
+- `APP_ENV`: Environment selector (dev, prod, test) - loads corresponding YAML file
+
+**Configuration Overrides** (use `GINAPI_` prefix):
+- `GINAPI_SERVER_GRAPHQL_PORT`: GraphQL server port (default from YAML)
+- `GINAPI_DATABASE_HOST`: Database host (`postgres` for Docker, `localhost` for local)
+- `GINAPI_DATABASE_PORT`, `GINAPI_DATABASE_USER`, `GINAPI_DATABASE_PASSWORD`, `GINAPI_DATABASE_DBNAME`: Database config
+- `GINAPI_LOGGING_LEVEL`: Logging level (debug, info, warn, error)
+- `GINAPI_LOGGING_PRETTY`: Pretty logs (true for dev, false for production)
+
+See the **Configuration System** section above for complete details.
 
 ### Docker Files
 - `Dockerfile`: Multi-stage build configuration
 - `docker-compose.yml`: Service orchestration
 - `.dockerignore`: Excludes unnecessary files from build
-- `.env.example`: Template for environment variables
+- `configs/`: YAML configuration files (dev.yaml, prod.yaml, test.yaml)
 
 ## Notes
 
 - **GraphQL models are used everywhere** - no separate domain models
 - **Docker deployment available** - One command to run entire stack
+- **Viper configuration** - Environment-specific YAML files with env var overrides
 - Vietnamese comments in code explain architecture decisions
-- GraphQL server port configured via `GRAPHQL_PORT` environment variable (default: 8081)
-- Legacy REST server port configured via `SERVER_PORT` environment variable (default: 8080)
+- Configuration via `APP_ENV` variable (dev/prod/test) + YAML files + `GINAPI_*` env vars
+- GraphQL server port: `GINAPI_SERVER_GRAPHQL_PORT` (default: 8081 from YAML)
+- Legacy REST server port: `GINAPI_SERVER_REST_PORT` (default: 8080 from YAML)
 - No authentication/authorization implemented yet
 - **IMPORTANT Code Generation**:
   - After modifying GraphQL schema: `make generate-graphql`

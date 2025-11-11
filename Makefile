@@ -81,48 +81,78 @@ generate-graphql: ## Regenerate GraphQL code (gqlgen)
 
 ##@ Docker & Database
 
-docker-up: ## Start PostgreSQL with Docker Compose (database only)
-	@echo "$(BLUE)Starting PostgreSQL...$(NC)"
-	docker-compose up -d postgres
+docker-up: ## Start PostgreSQL with Docker Compose (database only, local)
+	@echo "$(BLUE)Starting PostgreSQL (local)...$(NC)"
+	docker-compose -f docker-compose.local.yml up -d postgres
 	@echo "$(YELLOW)Waiting for PostgreSQL to be ready...$(NC)"
 	@sleep 3
 	@echo "$(GREEN)✓ PostgreSQL is ready$(NC)"
+	@echo "$(YELLOW)Connection: localhost:5432$(NC)"
 
 docker-down: ## Stop all Docker containers
 	@echo "$(BLUE)Stopping containers...$(NC)"
-	docker-compose down
+	docker-compose -f docker-compose.local.yml down 2>/dev/null || true
+	docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
 	@echo "$(GREEN)✓ Containers stopped$(NC)"
 
-docker-logs: ## Show PostgreSQL logs
-	docker-compose logs -f postgres
+docker-logs: ## Show PostgreSQL logs (local)
+	docker-compose -f docker-compose.local.yml logs -f postgres
 
-docker-build: ## Build Docker image for GraphQL API
-	@echo "$(BLUE)Building Docker image...$(NC)"
-	docker-compose build graphql-api
+docker-build: ## Build Docker image for GraphQL API (local)
+	@echo "$(BLUE)Building Docker image (local)...$(NC)"
+	docker-compose -f docker-compose.local.yml build --no-cache graphql-api
 	@echo "$(GREEN)✓ Docker image built$(NC)"
 
-docker-run: ## Start all services (PostgreSQL + GraphQL API)
-	@echo "$(BLUE)Starting all services...$(NC)"
-	docker-compose up -d
-	@echo "$(GREEN)✓ All services started$(NC)"
+docker-build-prod: ## Build Docker image (production)
+	@echo "$(BLUE)Building Docker image (production)...$(NC)"
+	docker-compose -f docker-compose.prod.yml build --no-cache graphql-api
+	@echo "$(GREEN)✓ Production Docker image built$(NC)"
+
+docker-run: ## Start all services - LOCAL (dev environment)
+	@echo "$(BLUE)Starting all services (LOCAL)...$(NC)"
+	@echo "$(YELLOW)Building fresh image and starting containers...$(NC)"
+	docker-compose -f docker-compose.local.yml up --build -d
+	@echo "$(GREEN)✓ All services started (LOCAL)$(NC)"
+	@echo "$(YELLOW)Environment: dev (configs/dev.yaml)$(NC)"
 	@echo "$(YELLOW)GraphQL Playground: http://localhost:8081$(NC)"
 	@echo "$(YELLOW)GraphQL API: http://localhost:8081/query$(NC)"
+	@echo "$(YELLOW)PostgreSQL: localhost:5432$(NC)"
 
-docker-restart: ## Restart all services
-	@echo "$(BLUE)Restarting services...$(NC)"
-	docker-compose restart
+docker-run-prod: ## Start all services - PRODUCTION (prod environment)
+	@echo "$(RED)⚠️  PRODUCTION DEPLOYMENT$(NC)"
+	@echo "$(BLUE)Starting all services (PRODUCTION)...$(NC)"
+	@echo "$(YELLOW)Building fresh image and starting containers...$(NC)"
+	docker-compose -f docker-compose.prod.yml up --build -d
+	@echo "$(GREEN)✓ All services started (PRODUCTION)$(NC)"
+	@echo "$(YELLOW)Environment: prod (configs/prod.yaml)$(NC)"
+	@echo "$(RED)⚠️  Ensure DB_PASSWORD is set securely!$(NC)"
+	@echo "$(YELLOW)GraphQL API: http://localhost:8081/query$(NC)"
+
+docker-restart: ## Restart all services (local)
+	@echo "$(BLUE)Restarting services (local)...$(NC)"
+	docker-compose -f docker-compose.local.yml restart
 	@echo "$(GREEN)✓ Services restarted$(NC)"
 
-docker-logs-api: ## Show GraphQL API logs
-	docker-compose logs -f graphql-api
+docker-restart-prod: ## Restart all services (production)
+	@echo "$(BLUE)Restarting services (production)...$(NC)"
+	docker-compose -f docker-compose.prod.yml restart
+	@echo "$(GREEN)✓ Services restarted$(NC)"
 
-docker-logs-all: ## Show all container logs
-	docker-compose logs -f
+docker-logs-api: ## Show GraphQL API logs (local)
+	docker-compose -f docker-compose.local.yml logs -f graphql-api
+
+docker-logs-api-prod: ## Show GraphQL API logs (production)
+	docker-compose -f docker-compose.prod.yml logs -f graphql-api
+
+docker-logs-all: ## Show all container logs (local)
+	docker-compose -f docker-compose.local.yml logs -f
 
 docker-ps: ## Show running containers
-	docker-compose ps
+	@docker ps -a | grep gin_crud || echo "No containers found"
 
-docker-rebuild: docker-down docker-build docker-run ## Rebuild and restart everything
+docker-rebuild: docker-down docker-run ## Rebuild and restart (local)
+
+docker-rebuild-prod: docker-down docker-run-prod ## Rebuild and restart (production)
 
 ##@ Code Quality
 

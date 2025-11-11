@@ -40,11 +40,17 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/graphql-server .
 
+# Copy configuration files
+COPY --from=builder /build/configs ./configs
+
 # Change ownership
 RUN chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
+
+# Set default environment to production
+ENV APP_ENV=prod
 
 # Expose port
 EXPOSE 8081

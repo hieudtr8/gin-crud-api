@@ -1,0 +1,66 @@
+# Docker Compose for Local Development
+# Usage: docker-compose -f docker-compose.local.yml up
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gin_crud_postgres_local
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gin_crud_api
+    ports:
+      - "5432:5432"  # Exposed for local DB clients (pgAdmin, DBeaver, etc.)
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  graphql-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gin_crud_graphql_local
+    ports:
+      - "8081:8081"  # GraphQL API exposed
+    environment:
+      # Use development environment config
+      APP_ENV: dev
+
+      # Database Configuration (override dev.yaml for Docker networking)
+      GINAPI_DATABASE_HOST: postgres
+      GINAPI_DATABASE_PORT: 5432
+      GINAPI_DATABASE_USER: postgres
+      GINAPI_DATABASE_PASSWORD: postgres
+      GINAPI_DATABASE_DBNAME: gin_crud_api
+      GINAPI_DATABASE_SSLMODE: disable
+
+      # Logging Configuration (verbose for local debugging)
+      GINAPI_LOGGING_LEVEL: debug
+      GINAPI_LOGGING_PRETTY: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data_local:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,7 @@
+# Ignore local configuration overrides
+local.yaml
+*.local.yaml
+
+# Ignore environment-specific secrets
+.env
+*.env

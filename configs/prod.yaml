@@ -1,0 +1,22 @@
+# Production Environment Configuration
+# This file contains production-ready defaults
+# Override any value by setting environment variables: GINAPI_<SECTION>_<KEY>
+# Example: GINAPI_DATABASE_PASSWORD=secure_password
+
+server:
+  graphql_port: "8081"  # GraphQL API server port
+  rest_port: "8080"     # Legacy REST API server port
+
+database:
+  host: postgres        # Docker service name or production host
+  port: 5432
+  user: postgres
+  password: postgres    # IMPORTANT: Override with GINAPI_DATABASE_PASSWORD in production
+  dbname: gin_crud_api
+  sslmode: require      # SSL required for production security
+  max_conns: 50         # Higher connection pool for production load
+  min_conns: 10         # More idle connections for better performance
+
+logging:
+  level: info           # Standard logging for production (info, warn, error)
+  pretty: false         # JSON output for log aggregation systems
